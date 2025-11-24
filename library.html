@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Futuristic Wallpapers - Library</title>
+  <title>All Wallpapers - Library</title>
   <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <header class="site-header">
     <div class="container header-inner">
-      <a class="brand" href="index.html">Futuristic Wallpapers</a>
+      <a class="brand" href="index.html">All Wallpapers</a>
       <nav class="nav">
         <a href="index.html" class="nav-link">Home</a>
         <a href="library.html" class="nav-link">Library</a>
@@ -26,7 +26,7 @@
       <template id="placeholderTpl">
         <article class="card">
           <div class="placeholder">
-            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <svg viewBox="0 0 16 9" aria-hidden="true" focusable="false">
               <path d="M3 3h18v18H3z" fill="none"></path>
               <rect x="4" y="6" width="16" height="12" rx="2" ry="2" stroke="currentColor" fill="none" stroke-width="1.2"></rect>
             </svg>
@@ -34,16 +34,16 @@
         </article>
       </template>
 
-      <div id="gridContainer"></div>
+      <div id="gridContainer" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px;"></div>
     </section>
   </main>
 
   <footer class="site-footer">
     <div class="container footer-inner">
-      <small>© <span id="yearLib"></span> Futuristic Wallpapers</small>
+      <small>© <span id="yearLib"></span> All Wallpapers</small>
       <div class="controls">
         <label class="theme-toggle">
-          <input type="checkbox" id="themeSwitchLib" aria-label="Toggle light dark mode">
+          <input type="checkbox" id="themeSwitch" aria-label="Toggle light dark mode">
           <span class="toggle-track"></span>
         </label>
       </div>

@@ -1,5 +1,5 @@
 :root {
-  --bg-dark: #0a0f1c;
+  --bg-dark: #000;
   --bg-light: #f9f9f9;
   --text-dark: #e0e6ed;
   --text-light: #0a0f1c;
@@ -13,11 +13,16 @@
 [data-theme="dark"] {
   --bg: var(--bg-dark);
   --text: var(--text-dark);
+  background: radial-gradient(circle, rgba(0, 229, 255, 0.4) 10%, transparent 50%),
+              radial-gradient(circle, rgba(0, 229, 255, 0.3) 15%, transparent 60%),
+              radial-gradient(circle, rgba(0, 229, 255, 0.2) 20%, transparent 80%),
+              var(--bg-dark);
 }
 
 [data-theme="light"] {
   --bg: var(--bg-light);
   --text: var(--text-light);
+  background: var(--bg-light);
 }
 
 * {
@@ -98,7 +103,8 @@ body {
 .hero-description {
   font-size: 1rem;
   margin: 12px 0 24px;
-  color: rgba(255, 255, 255, 0.8);
+  color: var(--text);
+  transition: color 0.3s;
 }
 
 .btn-explore {
@@ -120,16 +126,20 @@ body {
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: repeat(3, 1fr);
   gap: 16px;
 }
 
 .card {
-  background: rgba(0, 0, 0, 0.5);
-  border: 2px solid var(--accent);
+  aspect-ratio: 16 / 9;
+  background: var(--bg-light);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
-  transition: transform 0.3s, box-shadow 0.3s;
+  transition: background 0.3s, box-shadow 0.3s;
+}
+
+[data-theme="dark"] .card {
+  background: var(--bg-dark);
 }
 
 .card:hover {
@@ -137,13 +147,32 @@ body {
   box-shadow: 0 0 16px rgba(0, 229, 255, 0.8);
 }
 
+/* ✅ VERBETERING: Symmetrische en gecentreerde placeholders */
+.placeholders-wrapper {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  padding: 48px 24px;
+  min-height: 60vh;
+}
+
 .placeholder {
-  aspect-ratio: 16/9;
+  width: 300px;
+  height: 170px;
   background: linear-gradient(135deg, rgba(0, 229, 255, 0.1), rgba(0, 229, 255, 0.05));
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.placeholder:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 16px rgba(0, 229, 255, 0.8);
 }
 
 @media (max-width: 600px) {
@@ -163,10 +192,143 @@ body {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 12px;
   }
+
+  .placeholder {
+    width: 100%;
+    height: auto;
+  }
 }
 
 @media (max-width: 380px) {
   #gridContainer {
     grid-template-columns: repeat(1, minmax(0, 1fr));
   }
+}
+
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.theme-toggle input {
+  display: none;
+}
+
+.theme-toggle .toggle-track {
+  width: 50px;
+  height: 24px;
+  background: var(--accent);
+  border-radius: 12px;
+  position: relative;
+  transition: background 0.3s;
+}
+
+.theme-toggle .toggle-track::before {
+  content: "";
+  width: 20px;
+  height: 20px;
+  background: #fff;
+  border-radius: 50%;
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  transition: transform 0.3s;
+}
+
+.theme-toggle input:checked + .toggle-track::before {
+  transform: translateX(26px);
+}
+
+.theme-toggle input:checked + .toggle-track {
+  background: var(--accent-strong);
+}
+
+.highlights {
+  text-align: center;
+  padding: 48px 24px;
+  background: var(--bg);
+  color: var(--text);
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+  transition: background 0.3s, color 0.3s;
+}
+
+.highlights h2 {
+  font-size: 2rem;
+  margin-bottom: 24px;
+  color: var(--accent);
+}
+
+.highlight-cards {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+}
+
+.highlight-cards .card {
+  background: var(--bg-light);
+  color: var(--text-dark);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 16px;
+  transition: background 0.3s, color 0.3s;
+}
+
+[data-theme="dark"] .highlight-cards .card {
+  background: var(--bg-dark);
+  color: var(--text-light);
+}
+
+.highlight-cards .card h3 {
+  margin-top: 0;
+  color: var(--accent-strong);
+}
+
+.highlight-cards .card p {
+  color: var(--text);
+  transition: color 0.3s;
+}
+
+[data-theme="dark"] .highlight-cards .card p {
+  color: #fff;
+}
+
+[data-theme="light"] .highlight-cards .card p {
+  color: #000;
+}
+
+.info-cards {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  padding: 48px 24px;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.info-cards .card {
+  text-align: center;
+  max-width: 250px;
+  background: var(--bg-light);
+  color: var(--text-dark);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 16px;
+  transition: background 0.3s, color 0.3s;
+}
+
+[data-theme="dark"] .info-cards .card {
+  background: var(--bg-dark);
+  color: var(--text-light);
+}
+
+.info-cards .card img {
+  width: 64px;
+  height: 64px;
+  margin-bottom: 16px;
+}
+
+.info-cards .card h3, .info-cards .card p {
+  color: var(--text);
+  transition: color 0.3s;
 }
