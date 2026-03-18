@@ -1,0 +1,69 @@
+﻿<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="A curated wallpaper library with 4K downloads for desktop and mobile setups." />
+  <meta property="og:title" content="All Wallpapers" />
+  <meta property="og:description" content="Browse and download premium wallpapers for your setup." />
+  <meta property="og:type" content="website" />
+  <title>All Wallpapers | About</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Syne:wght@500;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body data-page="about">
+  <div class="mesh" aria-hidden="true"></div>
+
+  <header class="site-nav" id="siteNav">
+    <div class="nav-shell">
+      <a class="brand" href="index.html">All <strong>Wallpapers</strong></a>
+      <nav class="nav-links" aria-label="Main navigation">
+        <a class="nav-link" data-nav="home" href="index.html">Home</a>
+        <a class="nav-link" data-nav="wallpapers" href="wallpapers.html">Wallpapers</a>
+        <a class="nav-link" data-nav="about" href="about.html">About</a>
+      </nav>
+      <a class="btn" href="wallpapers.html">Open Collection</a>
+    </div>
+  </header>
+
+  <main>
+    <section class="page-hero reveal">
+      <span class="eyebrow">About The Project</span>
+      <h1>A wallpaper space built to feel calm, fast, and alive.</h1>
+      <p>
+        The interface focuses on image-first browsing with quiet motion, readable contrast, and clean interactions.
+        Everything is tuned to stay sharp on both desktop and mobile.
+      </p>
+    </section>
+
+    <section class="section" style="padding-top: 2.2rem;">
+      <div class="text-grid">
+        <article class="text-card reveal">
+          <span class="text-step">Visual System</span>
+          <h3>Dark base, one accent color</h3>
+          <p style="margin-top: 0.65rem;">The palette is intentional: deep dark surfaces, neutral text hierarchy, and a single electric blue for action.</p>
+        </article>
+        <article class="text-card reveal delay-1">
+          <span class="text-step">Interaction</span>
+          <h3>Quiet, responsive motion</h3>
+          <p style="margin-top: 0.65rem;">Cards scale softly, backgrounds shift subtly, and scroll animations guide attention without distraction.</p>
+        </article>
+        <article class="text-card reveal delay-2">
+          <span class="text-step">Practicality</span>
+          <h3>No broken UI states</h3>
+          <p style="margin-top: 0.65rem;">Actions are rendered only when files are truly available, so users never click dead preview or download buttons.</p>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <span>Copyright <span id="year"></span> All Wallpapers</span>
+    <span>Built with HTML, CSS, and Vanilla JavaScript</span>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>

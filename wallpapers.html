@@ -1,0 +1,86 @@
+﻿<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="A curated wallpaper library with 4K downloads for desktop and mobile setups." />
+  <meta property="og:title" content="All Wallpapers" />
+  <meta property="og:description" content="Browse and download premium wallpapers for your setup." />
+  <meta property="og:type" content="website" />
+  <title>All Wallpapers | Collection</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Syne:wght@500;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body data-page="wallpapers">
+  <div class="mesh" aria-hidden="true"></div>
+
+  <header class="site-nav" id="siteNav">
+    <div class="nav-shell">
+      <a class="brand" href="index.html">All <strong>Wallpapers</strong></a>
+      <nav class="nav-links" aria-label="Main navigation">
+        <a class="nav-link" data-nav="home" href="index.html">Home</a>
+        <a class="nav-link" data-nav="wallpapers" href="wallpapers.html">Wallpapers</a>
+        <a class="nav-link" data-nav="about" href="about.html">About</a>
+      </nav>
+      <a class="btn" href="index.html">Back To Home</a>
+    </div>
+  </header>
+
+  <main>
+    <section class="page-hero reveal">
+      <span class="eyebrow">Full Collection</span>
+      <h1>Browse the complete wallpaper library.</h1>
+      <p>
+        Preview and download actions appear only when a card has a working file.
+        If a file cannot be loaded, the card stays clean with no broken controls.
+      </p>
+    </section>
+
+    <section class="section" style="padding-top: 2.2rem;">
+      <div class="controls-sentinel" id="controlsSentinel" aria-hidden="true"></div>
+      <div class="controls-sticky reveal" id="controlsSticky">
+        <div class="filter-bar" id="categoryFilters" role="toolbar" aria-label="Wallpaper filters">
+          <button class="filter-btn active" type="button" data-filter="All">All</button>
+          <button class="filter-btn" type="button" data-filter="Space">Space</button>
+          <button class="filter-btn" type="button" data-filter="Nature">Nature</button>
+          <button class="filter-btn" type="button" data-filter="Urban">Urban</button>
+          <button class="filter-btn" type="button" data-filter="Cinematic">Cinematic</button>
+          <button class="filter-btn" type="button" data-filter="Abstract">Abstract</button>
+          <button class="filter-btn" type="button" data-filter="Curated">Curated</button>
+          <button class="filter-btn" type="button" data-filter="Favorites">Favorites</button>
+        </div>
+        <div class="search-sort-row delay-1">
+          <div class="search-wrap">
+            <input id="wallpaperSearch" class="search-input" type="search" placeholder="Search wallpapers..." autocomplete="off" aria-label="Search wallpapers" />
+            <kbd class="search-shortcut" aria-hidden="true">/</kbd>
+          </div>
+          <div class="sort-wrap" id="sortWrap">
+            <button class="sort-trigger" id="sortTrigger" type="button" aria-haspopup="listbox" aria-expanded="false">
+              <span class="sort-trigger-label" id="sortTriggerLabel">Default</span>
+              <span class="sort-chevron" aria-hidden="true"></span>
+            </button>
+            <div class="sort-menu" id="sortMenu" role="listbox" hidden>
+              <button class="sort-option is-selected" type="button" role="option" data-value="default" aria-selected="true">Default</button>
+              <button class="sort-option" type="button" role="option" data-value="az" aria-selected="false">A -&gt; Z</button>
+              <button class="sort-option" type="button" role="option" data-value="za" aria-selected="false">Z -&gt; A</button>
+              <button class="sort-option" type="button" role="option" data-value="category" aria-selected="false">By Category</button>
+            </div>
+          </div>
+          <button class="random-btn" id="randomWallpaperBtn" type="button">Random ↝</button>
+        </div>
+        <p class="visible-count" id="visibleCount">Showing <span class="count-number">0</span> of 51 wallpapers</p>
+      </div>
+      <div class="wallpaper-grid" id="allGrid" data-layout="asymmetric"></div>
+    </section>
+  </main>
+
+  <footer>
+    <span>Copyright <span id="year"></span> All Wallpapers</span>
+    <span>Every card is validated on load</span>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>

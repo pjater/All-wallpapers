@@ -1,0 +1,99 @@
+﻿<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="A curated wallpaper library with 4K downloads for desktop and mobile setups." />
+  <meta property="og:title" content="All Wallpapers" />
+  <meta property="og:description" content="Browse and download premium wallpapers for your setup." />
+  <meta property="og:type" content="website" />
+  <title>All Wallpapers | Home</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Syne:wght@500;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body data-page="home">
+  <div class="mesh" aria-hidden="true"></div>
+
+  <header class="site-nav" id="siteNav">
+    <div class="nav-shell">
+      <a class="brand" href="index.html">All <strong>Wallpapers</strong></a>
+      <nav class="nav-links" aria-label="Main navigation">
+        <a class="nav-link" data-nav="home" href="index.html">Home</a>
+        <a class="nav-link" data-nav="wallpapers" href="wallpapers.html">Wallpapers</a>
+        <a class="nav-link" data-nav="about" href="about.html">About</a>
+      </nav>
+      <a class="btn" href="wallpapers.html">Browse All</a>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="hero-inner">
+        <div class="reveal">
+          <span class="eyebrow">Curated Visual Library</span>
+          <h1 class="hero-title">Wallpapers that give your setup instant character.</h1>
+          <p class="hero-sub">
+            A modern experience built with deep contrast, expressive typography, and smooth interactions.
+            Start with a curated selection here, then open the full library on the wallpapers page.
+          </p>
+          <div class="hero-actions">
+            <a class="btn" href="wallpapers.html">Open Full Collection</a>
+            <a class="btn-ghost" href="about.html">See The Project</a>
+          </div>
+          <div class="stat-row">
+            <div class="stat">
+              <strong>50+</strong>
+              <span>Wallpapers</span>
+            </div>
+            <div class="stat">
+              <strong>4K</strong>
+              <span>Display Ready</span>
+            </div>
+            <div class="stat">
+              <strong>1 Click</strong>
+              <span>Quick Download</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="hero-preview reveal delay-1">
+          <div class="hero-preview-stack" id="heroPreviewStack" aria-label="Featured wallpaper previews"></div>
+          <p class="hero-preview-meta">Now showing featured wallpapers from the curated set.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head reveal">
+        <div>
+          <span class="eyebrow">Featured Set</span>
+          <h2>Curated picks on the homepage</h2>
+        </div>
+        <p>
+          This page shows a focused selection. Use "Wallpapers" in the header for the full collection.
+        </p>
+      </div>
+      <div class="wallpaper-grid" id="featuredGrid" data-layout="asymmetric"></div>
+    </section>
+
+    <section class="section">
+      <div class="cta reveal">
+        <div>
+          <span class="eyebrow">Ready</span>
+          <h3>Refresh your screen with the full wallpaper library.</h3>
+        </div>
+        <a class="btn" href="wallpapers.html">View Wallpapers</a>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <span>Copyright <span id="year"></span> All Wallpapers</span>
+    <span>Designed for desktop and mobile</span>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
