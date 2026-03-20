@@ -111,13 +111,16 @@ const radialShapes = [
 ];
 
 const MAX_STOPS = 6;
+const MAX_GLOW_SPOTS = 10;
 const MAX_CUSTOM_WIDTH = 7680;
 const MAX_CUSTOM_HEIGHT = 4320;
+const GLOW_PREVIEW_RENDER_MS = 32;
 
 let stopIdCounter = 0;
 let glowSpotIdCounter = 0;
 let noiseCache = new Map();
 let renderDebounceTimer = 0;
+let glowPreviewDebounceTimer = 0;
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 
@@ -143,20 +146,20 @@ const formatAspectRatio = (width, height) => {
 
 const normalizeAngle = (value) => ((Number(value) % 360) + 360) % 360;
 
-const sortStops = (stops) => stops.slice().sort((a, b) => a.pos - b.pos);
-
 const createStop = (color, pos) => ({
   id: `stop-${stopIdCounter += 1}`,
   color,
   pos: clamp(Math.round(pos), 0, 100)
 });
 
-const createGlowSpot = (color = "#ffffff", x = 50, y = 50, opacity = 30) => ({
+const createGlowSpot = (color = "#ffffff", x = 50, y = 50, opacity = 30, feather = 50, shape = "circle") => ({
   id: `glow-${glowSpotIdCounter += 1}`,
   color,
   x: clamp(Math.round(x), 0, 100),
   y: clamp(Math.round(y), 0, 100),
-  opacity: clamp(Math.round(opacity), 0, 100)
+  opacity: clamp(Math.round(opacity), 0, 100),
+  feather: clamp(Math.round(feather), 0, 100),
+  shape
 });
 
 const createDefaultState = () => ({
@@ -170,7 +173,7 @@ const createDefaultState = () => ({
   effects: {
     grain: { enabled: false, intensity: 30 },
     vignette: { enabled: false, intensity: 35 },
-    glow: { enabled: false, spots: [createGlowSpot("#ffffff", 50, 50, 30)] }
+    glow: { enabled: false, spots: [createGlowSpot("#ffffff", 50, 50, 30, 50, "circle")] }
   },
   resolutionId: "hd",
   width: 1920,
@@ -256,15 +259,14 @@ const getRadialPosition = (config) => {
 };
 
 const ensureStopCoverage = (stops) => {
-  const sorted = sortStops(stops);
-  if (!sorted.length) {
+  if (!stops.length) {
     return [
       { color: "#2f8cff", pos: 0 },
       { color: "#7c3aed", pos: 100 }
     ];
   }
 
-  const normalized = sorted.map((stop) => ({ color: stop.color, pos: clamp(stop.pos, 0, 100) }));
+  const normalized = stops.map((stop) => ({ color: stop.color, pos: clamp(stop.pos, 0, 100) }));
   if (normalized[0].pos > 0) {
     normalized.unshift({ color: normalized[0].color, pos: 0 });
   }
@@ -389,7 +391,7 @@ const drawConicGradient = (ctx, width, height, config) => {
 };
 
 const getMeshCornerColors = (stops) => {
-  const palette = sortStops(stops).map((stop) => stop.color);
+  const palette = stops.map((stop) => stop.color);
   if (palette.length >= 4) {
     return palette.slice(0, 4);
   }
@@ -467,25 +469,102 @@ const getNoiseCanvas = (width, height, intensity) => {
   return noiseCanvas;
 };
 
+const getGlowRadius = (spot, width) => Math.max(6, (clamp(spot.feather, 0, 100) / 100) * (width * 0.5));
+
+const drawCircleGlow = (ctx, spot, x, y, radius) => {
+  const gradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
+  gradient.addColorStop(0, toRgba(spot.color, spot.opacity / 100));
+  gradient.addColorStop(1, toRgba(spot.color, 0));
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+};
+
+const drawEllipseGlow = (ctx, spot, x, y, radius) => {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(1.6, 1);
+  const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, radius);
+  gradient.addColorStop(0, toRgba(spot.color, spot.opacity / 100));
+  gradient.addColorStop(1, toRgba(spot.color, 0));
+  ctx.fillStyle = gradient;
+  ctx.fillRect(-ctx.canvas.width, -ctx.canvas.height, ctx.canvas.width * 2, ctx.canvas.height * 2);
+  ctx.restore();
+};
+
+const drawSoftStarGlow = (ctx, spot, x, y, radius) => {
+  ctx.save();
+  ctx.translate(x, y);
+
+  for (let index = 0; index < 5; index += 1) {
+    ctx.save();
+    ctx.rotate(((72 * index) * Math.PI) / 180);
+    const beamGradient = ctx.createLinearGradient(0, 0, radius, 0);
+    beamGradient.addColorStop(0, toRgba(spot.color, spot.opacity / 100));
+    beamGradient.addColorStop(1, toRgba(spot.color, 0));
+    ctx.strokeStyle = beamGradient;
+    ctx.lineWidth = Math.max(8, radius * 0.12);
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(radius, 0);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  const core = ctx.createRadialGradient(0, 0, 0, 0, 0, radius * 0.35);
+  core.addColorStop(0, toRgba(spot.color, Math.min(1, spot.opacity / 78)));
+  core.addColorStop(1, toRgba(spot.color, 0));
+  ctx.fillStyle = core;
+  ctx.fillRect(-radius, -radius, radius * 2, radius * 2);
+  ctx.restore();
+};
+
+const drawDiamondGlow = (ctx, spot, x, y, radius) => {
+  const size = radius * 1.15;
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(Math.PI / 4);
+  const gradient = ctx.createLinearGradient(0, -size, 0, size);
+  gradient.addColorStop(0, toRgba(spot.color, 0));
+  gradient.addColorStop(0.5, toRgba(spot.color, spot.opacity / 100));
+  gradient.addColorStop(1, toRgba(spot.color, 0));
+  ctx.fillStyle = gradient;
+  ctx.fillRect(-size / 2, -size / 2, size, size);
+  ctx.restore();
+};
+
 const applyGlowEffect = (ctx, width, height, glowConfig) => {
-  if (!glowConfig.enabled) {
+  if (!glowConfig.enabled || !glowConfig.spots.length) {
     return;
   }
 
-  const radius = Math.min(width, height) * 0.32;
   ctx.save();
   ctx.globalCompositeOperation = "screen";
 
   glowConfig.spots.forEach((spot) => {
     const x = (spot.x / 100) * width;
     const y = (spot.y / 100) * height;
-    const gradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
-    gradient.addColorStop(0, toRgba(spot.color, spot.opacity / 100));
-    gradient.addColorStop(1, toRgba(spot.color, 0));
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, width, height);
+    const radius = getGlowRadius(spot, width);
+
+    if (spot.shape === "ellipse") {
+      drawEllipseGlow(ctx, spot, x, y, radius);
+      return;
+    }
+
+    if (spot.shape === "soft-star") {
+      drawSoftStarGlow(ctx, spot, x, y, radius);
+      return;
+    }
+
+    if (spot.shape === "diamond") {
+      drawDiamondGlow(ctx, spot, x, y, radius);
+      return;
+    }
+
+    drawCircleGlow(ctx, spot, x, y, radius);
   });
 
+  ctx.globalCompositeOperation = "source-over";
   ctx.restore();
 };
 
@@ -522,13 +601,15 @@ const applyGrainEffect = (ctx, width, height, grainConfig) => {
   ctx.restore();
 };
 
-const drawEffects = (ctx, width, height, config) => {
-  applyGlowEffect(ctx, width, height, config.effects.glow);
+const drawEffects = (ctx, width, height, config, options = {}) => {
+  if (!options.skipGlowSpots) {
+    applyGlowEffect(ctx, width, height, config.effects.glow);
+  }
   applyVignetteEffect(ctx, width, height, config.effects.vignette);
   applyGrainEffect(ctx, width, height, config.effects.grain);
 };
 
-const renderCanvas = (canvas, config) => {
+const renderCanvas = (canvas, config, options = {}) => {
   if (!canvas) {
     return;
   }
@@ -536,10 +617,11 @@ const renderCanvas = (canvas, config) => {
   const ctx = canvas.getContext("2d", { alpha: false });
   const width = canvas.width;
   const height = canvas.height;
-
-  if (renderCanvas._meshFrame) {
-    cancelAnimationFrame(renderCanvas._meshFrame);
-    renderCanvas._meshFrame = 0;
+  const meshFrames = renderCanvas._meshFrames || (renderCanvas._meshFrames = new WeakMap());
+  const previousFrame = meshFrames.get(canvas);
+  if (previousFrame) {
+    cancelAnimationFrame(previousFrame);
+    meshFrames.delete(canvas);
   }
 
   ctx.clearRect(0, 0, width, height);
@@ -564,19 +646,20 @@ const renderCanvas = (canvas, config) => {
   };
 
   if (config.type === "mesh") {
-    renderCanvas._meshFrame = requestAnimationFrame(() => {
+    const frameId = requestAnimationFrame(() => {
       drawBase();
-      drawEffects(ctx, width, height, config);
+      drawEffects(ctx, width, height, config, options);
     });
+    meshFrames.set(canvas, frameId);
     return;
   }
 
   drawBase();
-  drawEffects(ctx, width, height, config);
+  drawEffects(ctx, width, height, config, options);
 };
 
 const buildGradientCss = (config) => {
-  const stops = sortStops(config.stops).map((stop) => `${stop.color} ${clamp(stop.pos, 0, 100)}%`).join(", ");
+  const stops = config.stops.map((stop) => `${stop.color} ${clamp(stop.pos, 0, 100)}%`).join(", ");
 
   if (config.type === "linear") {
     return `background: linear-gradient(${normalizeAngle(config.angle)}deg, ${stops});`;
@@ -666,10 +749,13 @@ const createGradientMakerApp = () => {
 
   const refs = {
     canvas,
+    makerPanel: document.querySelector(".maker-panel"),
     canvasMeta: document.getElementById("canvasMeta"),
     typeRow: document.getElementById("gradientTypeRow"),
     stopList: document.getElementById("colorStopsList"),
     addStopBtn: document.getElementById("addColorStopBtn"),
+    glowList: document.getElementById("glowList"),
+    addGlowBtn: document.getElementById("addGlowSpotBtn"),
     directionPanel: document.getElementById("directionPanel"),
     directionControls: document.getElementById("directionControls"),
     effectsStack: document.getElementById("effectsStack"),
@@ -685,6 +771,8 @@ const createGradientMakerApp = () => {
 
   let state = createDefaultState();
   let dragCleanup = null;
+  let activeGlowPopup = null;
+  let draggedStopId = "";
 
   const syncCanvasResolution = () => {
     refs.canvas.width = state.width;
@@ -699,12 +787,40 @@ const createGradientMakerApp = () => {
     refs.canvasMeta.textContent = `${state.width} × ${state.height} · ${formatAspectRatio(state.width, state.height)}`;
   };
 
+  const showMakerToast = (message) => {
+    const toast = document.createElement("div");
+    toast.className = "maker-toast";
+    toast.textContent = message;
+    document.body.appendChild(toast);
+
+    requestAnimationFrame(() => {
+      toast.classList.add("is-visible");
+    });
+
+    setTimeout(() => {
+      toast.classList.remove("is-visible");
+      setTimeout(() => toast.remove(), 250);
+    }, 2000);
+  };
+
+  const scheduleGlowPreviewSync = () => {
+    if (!activeGlowPopup) {
+      return;
+    }
+
+    clearTimeout(glowPreviewDebounceTimer);
+    glowPreviewDebounceTimer = setTimeout(() => {
+      renderGlowPopupPreview();
+    }, GLOW_PREVIEW_RENDER_MS);
+  };
+
   const scheduleRender = () => {
     clearTimeout(renderDebounceTimer);
     renderDebounceTimer = setTimeout(() => {
       syncCanvasResolution();
       updateCanvasMeta();
       renderCanvas(refs.canvas, state);
+      scheduleGlowPreviewSync();
     }, 16);
   };
 
@@ -724,7 +840,15 @@ const createGradientMakerApp = () => {
     refs.stopList.innerHTML = state.stops
       .map(
         (stop, index) => `
-          <div class="stop-row" data-stop-id="${stop.id}">
+          <div class="stop-row color-stop-row" data-stop-id="${stop.id}" draggable="true">
+            <svg class="drag-handle" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <circle cx="9" cy="5" r="1"></circle>
+              <circle cx="9" cy="12" r="1"></circle>
+              <circle cx="9" cy="19" r="1"></circle>
+              <circle cx="15" cy="5" r="1"></circle>
+              <circle cx="15" cy="12" r="1"></circle>
+              <circle cx="15" cy="19" r="1"></circle>
+            </svg>
             <input class="stop-color" type="color" value="${stop.color}" aria-label="Color stop ${index + 1}" data-stop-color />
             <div class="stop-range-wrap">
               <div class="stop-range-label">
@@ -742,6 +866,338 @@ const createGradientMakerApp = () => {
       .join("");
 
     refs.addStopBtn.disabled = state.stops.length >= MAX_STOPS;
+  };
+
+  const updateGlowListRow = (spot) => {
+    const row = refs.glowList?.querySelector(`[data-glow-id="${spot.id}"]`);
+    if (!row) {
+      return;
+    }
+
+    const dot = row.querySelector(".glow-item-dot");
+    const hint = row.querySelector(".glow-item-hint");
+    if (dot) {
+      dot.style.background = spot.color;
+    }
+    if (hint) {
+      hint.textContent = `${spot.x}% / ${spot.y}%`;
+    }
+  };
+
+  const renderGlowList = () => {
+    if (!refs.glowList) {
+      return;
+    }
+
+    refs.glowList.innerHTML = state.effects.glow.spots
+      .map(
+        (spot, index) => `
+          <li class="glow-item" data-glow-id="${spot.id}">
+            <span class="glow-item-dot" style="background: ${spot.color};"></span>
+            <span class="glow-item-label">Spot ${index + 1}</span>
+            <span class="glow-item-spacer"></span>
+            <span class="glow-item-hint">${spot.x}% / ${spot.y}%</span>
+            <button class="glow-item-btn" type="button" data-glow-edit aria-label="Edit glow spot">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+              </svg>
+            </button>
+            <button class="glow-delete-btn" type="button" data-glow-delete aria-label="Delete glow spot">×</button>
+          </li>
+        `
+      )
+      .join("");
+  };
+
+  const cleanupStopDragIndicators = () => {
+    refs.stopList.querySelectorAll(".color-stop-row").forEach((row) => {
+      row.classList.remove("is-drag-over", "is-dragging");
+    });
+  };
+
+  const getGlowSpotById = (spotId) => state.effects.glow.spots.find((spot) => spot.id === spotId);
+
+  const closeGlowPopup = () => {
+    if (!activeGlowPopup) {
+      return;
+    }
+
+    const { element, cleanup } = activeGlowPopup;
+    cleanup?.();
+    activeGlowPopup = null;
+    element.classList.remove("is-visible");
+    setTimeout(() => element.remove(), 220);
+  };
+
+  const updateGlowPopupMeta = () => {
+    if (!activeGlowPopup) {
+      return;
+    }
+
+    const spot = getGlowSpotById(activeGlowPopup.spotId);
+    if (!spot) {
+      closeGlowPopup();
+      return;
+    }
+
+    activeGlowPopup.xValue.textContent = `X: ${spot.x}%`;
+    activeGlowPopup.yValue.textContent = `Y: ${spot.y}%`;
+    activeGlowPopup.opacityValue.textContent = `${spot.opacity}%`;
+    activeGlowPopup.featherValue.textContent = `${spot.feather}%`;
+    activeGlowPopup.colorInput.value = spot.color;
+    activeGlowPopup.opacityInput.value = String(spot.opacity);
+    activeGlowPopup.featherInput.value = String(spot.feather);
+    activeGlowPopup.shapeButtons.forEach((button) => {
+      button.classList.toggle("is-active", button.dataset.shape === spot.shape);
+    });
+  };
+
+  const renderGlowPopupHandles = () => {
+    if (!activeGlowPopup) {
+      return;
+    }
+
+    const currentSpot = getGlowSpotById(activeGlowPopup.spotId);
+    if (!currentSpot) {
+      closeGlowPopup();
+      return;
+    }
+
+    activeGlowPopup.handlesLayer.innerHTML = state.effects.glow.spots
+      .map(
+        (spot) => `
+          <div
+            class="mini-monitor-handle${spot.id === currentSpot.id ? " is-active" : ""}"
+            data-handle-spot-id="${spot.id}"
+            style="left: ${spot.x}%; top: ${spot.y}%; background: ${spot.color};"
+          ></div>
+        `
+      )
+      .join("");
+  };
+
+  const renderGlowPopupPreview = () => {
+    if (!activeGlowPopup) {
+      return;
+    }
+
+    renderCanvas(activeGlowPopup.previewCanvas, state, { skipGlowSpots: false });
+    renderGlowPopupHandles();
+    updateGlowPopupMeta();
+  };
+
+  const updateGlowSpotPosition = (spotId, clientX, clientY) => {
+    const spot = getGlowSpotById(spotId);
+    if (!spot || !activeGlowPopup) {
+      return;
+    }
+
+    const rect = activeGlowPopup.monitor.getBoundingClientRect();
+    spot.x = clamp(Math.round(((clientX - rect.left) / rect.width) * 100), 0, 100);
+    spot.y = clamp(Math.round(((clientY - rect.top) / rect.height) * 100), 0, 100);
+    state.effects.glow.enabled = true;
+    updateGlowListRow(spot);
+    renderGlowPopupHandles();
+    updateGlowPopupMeta();
+    scheduleRender();
+  };
+
+  const openGlowPopup = (spotId, button) => {
+    const spot = getGlowSpotById(spotId);
+    if (!spot || !refs.makerPanel) {
+      return;
+    }
+
+    closeGlowPopup();
+
+    const popup = document.createElement("div");
+    popup.className = "glow-popup";
+    popup.innerHTML = `
+      <div class="glow-popup-inner">
+        <div>
+          <span class="popup-label">Color</span>
+          <input class="popup-color-input" type="color" value="${spot.color}" />
+        </div>
+        <div>
+          <span class="popup-label">Shape</span>
+          <div class="popup-shape-row">
+            <button class="popup-shape-btn${spot.shape === "circle" ? " is-active" : ""}" type="button" data-shape="circle">Circle</button>
+            <button class="popup-shape-btn${spot.shape === "ellipse" ? " is-active" : ""}" type="button" data-shape="ellipse">Ellipse</button>
+            <button class="popup-shape-btn${spot.shape === "soft-star" ? " is-active" : ""}" type="button" data-shape="soft-star">Soft Star</button>
+            <button class="popup-shape-btn${spot.shape === "diamond" ? " is-active" : ""}" type="button" data-shape="diamond">Diamond</button>
+          </div>
+        </div>
+        <div>
+          <span class="popup-label">Position</span>
+          <div class="mini-monitor">
+            <canvas class="mini-monitor-canvas" width="260" height="146" aria-hidden="true"></canvas>
+            <div class="mini-monitor-handles"></div>
+          </div>
+          <div class="mini-monitor-meta">
+            <span class="mini-monitor-x"></span>
+            <span class="mini-monitor-y"></span>
+          </div>
+        </div>
+        <div class="popup-range-row">
+          <span class="popup-label">Opacity</span>
+          <div class="popup-range-head">
+            <span>Opacity</span>
+            <span class="popup-opacity-value">${spot.opacity}%</span>
+          </div>
+          <input class="effect-range" type="range" min="0" max="100" step="1" value="${spot.opacity}" />
+        </div>
+        <div class="popup-range-row">
+          <span class="popup-label">Feather Radius</span>
+          <div class="popup-range-head">
+            <span>Feather Radius</span>
+            <span class="popup-feather-value">${spot.feather}%</span>
+          </div>
+          <input class="effect-range" type="range" min="0" max="100" step="1" value="${spot.feather}" />
+          <p class="popup-hint">Controls blur spread on canvas.</p>
+        </div>
+        <button class="btn" type="button">Done</button>
+      </div>
+    `;
+
+    refs.makerPanel.appendChild(popup);
+
+    const colorInput = popup.querySelector(".popup-color-input");
+    const shapeButtons = Array.from(popup.querySelectorAll(".popup-shape-btn"));
+    const monitor = popup.querySelector(".mini-monitor");
+    const previewCanvas = popup.querySelector(".mini-monitor-canvas");
+    const handlesLayer = popup.querySelector(".mini-monitor-handles");
+    const xValue = popup.querySelector(".mini-monitor-x");
+    const yValue = popup.querySelector(".mini-monitor-y");
+    const opacityInput = popup.querySelectorAll(".effect-range")[0];
+    const featherInput = popup.querySelectorAll(".effect-range")[1];
+    const opacityValue = popup.querySelector(".popup-opacity-value");
+    const featherValue = popup.querySelector(".popup-feather-value");
+    const doneButton = popup.querySelector(".btn");
+
+    const panelRect = refs.makerPanel.getBoundingClientRect();
+    const buttonRect = button.getBoundingClientRect();
+    const popupWidth = 300;
+    const left = clamp(
+      buttonRect.right - panelRect.left - popupWidth + buttonRect.width,
+      12,
+      Math.max(12, refs.makerPanel.clientWidth - popupWidth - 12)
+    );
+    const top = buttonRect.bottom - panelRect.top + 10;
+    popup.style.left = `${left}px`;
+    popup.style.top = `${top}px`;
+
+    const handleOutsideClick = (event) => {
+      if (popup.contains(event.target) || event.target.closest("[data-glow-edit]")) {
+        return;
+      }
+      closeGlowPopup();
+    };
+
+    const handleEscape = (event) => {
+      if (event.key === "Escape") {
+        closeGlowPopup();
+      }
+    };
+
+    document.addEventListener("mousedown", handleOutsideClick);
+    document.addEventListener("keydown", handleEscape);
+
+    activeGlowPopup = {
+      spotId,
+      element: popup,
+      previewCanvas,
+      monitor,
+      handlesLayer,
+      colorInput,
+      shapeButtons,
+      xValue,
+      yValue,
+      opacityInput,
+      featherInput,
+      opacityValue,
+      featherValue,
+      cleanup: () => {
+        document.removeEventListener("mousedown", handleOutsideClick);
+        document.removeEventListener("keydown", handleEscape);
+      }
+    };
+
+    const syncCurrentSpot = (mutator) => {
+      const currentSpot = getGlowSpotById(spotId);
+      if (!currentSpot) {
+        closeGlowPopup();
+        return;
+      }
+
+      mutator(currentSpot);
+      state.effects.glow.enabled = true;
+      updateGlowListRow(currentSpot);
+      renderGlowPopupHandles();
+      updateGlowPopupMeta();
+      scheduleRender();
+    };
+
+    colorInput.addEventListener("input", () => {
+      syncCurrentSpot((currentSpot) => {
+        currentSpot.color = colorInput.value;
+      });
+    });
+
+    shapeButtons.forEach((shapeButton) => {
+      shapeButton.addEventListener("click", () => {
+        syncCurrentSpot((currentSpot) => {
+          currentSpot.shape = shapeButton.dataset.shape;
+        });
+      });
+    });
+
+    const startDragHandle = (event) => {
+      const handle = event.target.closest(".mini-monitor-handle.is-active");
+      if (!handle) {
+        return;
+      }
+
+      event.preventDefault();
+      updateGlowSpotPosition(spotId, event.clientX, event.clientY);
+
+      const onMove = (moveEvent) => updateGlowSpotPosition(spotId, moveEvent.clientX, moveEvent.clientY);
+      const onUp = () => {
+        window.removeEventListener("pointermove", onMove);
+        window.removeEventListener("pointerup", onUp);
+      };
+
+      window.addEventListener("pointermove", onMove);
+      window.addEventListener("pointerup", onUp);
+    };
+
+    monitor.addEventListener("click", (event) => {
+      if (event.target.closest(".mini-monitor-handle")) {
+        return;
+      }
+      updateGlowSpotPosition(spotId, event.clientX, event.clientY);
+    });
+
+    handlesLayer.addEventListener("pointerdown", startDragHandle);
+
+    opacityInput.addEventListener("input", () => {
+      syncCurrentSpot((currentSpot) => {
+        currentSpot.opacity = clamp(Number(opacityInput.value) || 0, 0, 100);
+      });
+    });
+
+    featherInput.addEventListener("input", () => {
+      syncCurrentSpot((currentSpot) => {
+        currentSpot.feather = clamp(Number(featherInput.value) || 0, 0, 100);
+      });
+    });
+
+    doneButton.addEventListener("click", closeGlowPopup);
+
+    requestAnimationFrame(() => {
+      popup.classList.add("is-visible");
+      renderGlowPopupPreview();
+    });
   };
 
   const updateAngleUi = () => {
@@ -915,20 +1371,8 @@ const createGradientMakerApp = () => {
     refs.directionControls.innerHTML = "";
   };
 
-  const ensureGlowSpotCount = (count) => {
-    const nextCount = clamp(count, 1, 3);
-
-    while (state.effects.glow.spots.length < nextCount) {
-      state.effects.glow.spots.push(
-        createGlowSpot(randomPleasingColor(), randomInt(18, 82), randomInt(18, 82), randomInt(24, 42))
-      );
-    }
-
-    state.effects.glow.spots = state.effects.glow.spots.slice(0, nextCount);
-  };
-
   const renderEffects = () => {
-    const { grain, vignette, glow } = state.effects;
+    const { grain, vignette } = state.effects;
     const createEffectCard = (key, title, note, enabled, controlsHtml) => `
       <div class="effect-card" data-effect-card="${key}">
         <div class="effect-head">
@@ -947,57 +1391,6 @@ const createGradientMakerApp = () => {
         <div class="effect-controls" ${enabled ? "" : "hidden"}>
           ${controlsHtml}
         </div>
-      </div>
-    `;
-
-    const glowControls = `
-      <div class="glow-spots">
-        <div class="glow-count-row">
-          ${[1, 2, 3]
-            .map(
-              (count) => `
-                <button class="maker-pill${glow.spots.length === count ? " is-active" : ""}" type="button" data-glow-count="${count}">
-                  ${count} Spot${count > 1 ? "s" : ""}
-                </button>
-              `
-            )
-            .join("")}
-        </div>
-        ${glow.spots
-          .map(
-            (spot, index) => `
-              <div class="glow-spot-card" data-glow-spot-id="${spot.id}">
-                <div class="glow-spot-head">
-                  <strong>Spot ${index + 1}</strong>
-                  <input class="glow-color-input" type="color" value="${spot.color}" data-glow-color />
-                </div>
-                <div class="glow-spot-grid">
-                  <div class="effect-range-wrap">
-                    <div class="effect-range-label">
-                      <span>X</span>
-                      <span class="glow-value">${spot.x}%</span>
-                    </div>
-                    <input class="glow-spot-range" type="range" min="0" max="100" value="${spot.x}" data-glow-axis="x" />
-                  </div>
-                  <div class="effect-range-wrap">
-                    <div class="effect-range-label">
-                      <span>Y</span>
-                      <span class="glow-value">${spot.y}%</span>
-                    </div>
-                    <input class="glow-spot-range" type="range" min="0" max="100" value="${spot.y}" data-glow-axis="y" />
-                  </div>
-                  <div class="effect-range-wrap">
-                    <div class="effect-range-label">
-                      <span>Opacity</span>
-                      <span class="glow-value">${spot.opacity}%</span>
-                    </div>
-                    <input class="glow-spot-range" type="range" min="0" max="100" value="${spot.opacity}" data-glow-axis="opacity" />
-                  </div>
-                </div>
-              </div>
-            `
-          )
-          .join("")}
       </div>
     `;
 
@@ -1031,8 +1424,7 @@ const createGradientMakerApp = () => {
             <input class="effect-range" type="range" min="0" max="100" value="${vignette.intensity}" data-effect-range="vignette" />
           </div>
         `
-      ),
-      createEffectCard("glow", "Glow Spots", "Soft radial blooms that lift the palette.", glow.enabled, glowControls)
+      )
     ].join("");
   };
 
@@ -1085,11 +1477,13 @@ const createGradientMakerApp = () => {
   const renderAllControls = () => {
     renderTypeButtons();
     renderColorStops();
+    renderGlowList();
     renderDirectionControls();
     renderEffects();
     renderPresets();
     renderResolutionButtons();
     updateCanvasMeta();
+    scheduleGlowPreviewSync();
   };
 
   const applyPreset = (preset) => {
@@ -1108,7 +1502,7 @@ const createGradientMakerApp = () => {
     nextState.effects.grain.enabled = false;
     nextState.effects.vignette.enabled = false;
     nextState.effects.glow.enabled = false;
-    nextState.effects.glow.spots = [createGlowSpot("#ffffff", 50, 50, 30)];
+    nextState.effects.glow.spots = [createGlowSpot("#ffffff", 50, 50, 30, 50, "circle")];
     nextState.resolutionId = currentResolutionId;
     nextState.width = currentWidth;
     nextState.height = currentHeight;
@@ -1131,7 +1525,7 @@ const createGradientMakerApp = () => {
     state.effects.grain.enabled = false;
     state.effects.vignette.enabled = false;
     state.effects.glow.enabled = false;
-    state.effects.glow.spots = [createGlowSpot("#ffffff", 50, 50, 30)];
+    state.effects.glow.spots = [createGlowSpot("#ffffff", 50, 50, 30, 50, "circle")];
     state.activePreset = "";
     noiseCache = new Map();
 
@@ -1168,7 +1562,7 @@ const createGradientMakerApp = () => {
   });
 
   refs.stopList.addEventListener("input", (event) => {
-    const row = event.target.closest(".stop-row");
+    const row = event.target.closest(".color-stop-row");
     if (!row) {
       return;
     }
@@ -1200,11 +1594,61 @@ const createGradientMakerApp = () => {
       return;
     }
 
-    const row = button.closest(".stop-row");
+    const row = button.closest(".color-stop-row");
     state.stops = state.stops.filter((item) => item.id !== row.dataset.stopId);
     state.activePreset = "";
     renderColorStops();
     scheduleRender();
+  });
+
+  refs.stopList.addEventListener("dragstart", (event) => {
+    const row = event.target.closest(".color-stop-row");
+    if (!row) {
+      return;
+    }
+
+    draggedStopId = row.dataset.stopId || "";
+    row.classList.add("is-dragging");
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", draggedStopId);
+  });
+
+  refs.stopList.addEventListener("dragover", (event) => {
+    const row = event.target.closest(".color-stop-row");
+    if (!row || row.dataset.stopId === draggedStopId) {
+      return;
+    }
+
+    event.preventDefault();
+    cleanupStopDragIndicators();
+    row.classList.add("is-drag-over");
+  });
+
+  refs.stopList.addEventListener("drop", (event) => {
+    const row = event.target.closest(".color-stop-row");
+    if (!row || row.dataset.stopId === draggedStopId) {
+      cleanupStopDragIndicators();
+      return;
+    }
+
+    event.preventDefault();
+    const fromIndex = state.stops.findIndex((stop) => stop.id === draggedStopId);
+    const toIndex = state.stops.findIndex((stop) => stop.id === row.dataset.stopId);
+    if (fromIndex < 0 || toIndex < 0) {
+      cleanupStopDragIndicators();
+      return;
+    }
+
+    const [movedStop] = state.stops.splice(fromIndex, 1);
+    state.stops.splice(toIndex, 0, movedStop);
+    renderColorStops();
+    cleanupStopDragIndicators();
+    scheduleRender();
+  });
+
+  refs.stopList.addEventListener("dragend", () => {
+    draggedStopId = "";
+    cleanupStopDragIndicators();
   });
 
   refs.addStopBtn.addEventListener("click", () => {
@@ -1219,6 +1663,51 @@ const createGradientMakerApp = () => {
     scheduleRender();
   });
 
+  refs.glowList.addEventListener("click", (event) => {
+    const glowRow = event.target.closest("[data-glow-id]");
+    if (!glowRow) {
+      return;
+    }
+
+    const spotId = glowRow.dataset.glowId;
+    const deleteButton = event.target.closest("[data-glow-delete]");
+    if (deleteButton) {
+      state.effects.glow.spots = state.effects.glow.spots.filter((spot) => spot.id !== spotId);
+      if (!state.effects.glow.spots.length) {
+        state.effects.glow.enabled = false;
+      }
+      if (activeGlowPopup?.spotId === spotId) {
+        closeGlowPopup();
+      }
+      renderGlowList();
+      scheduleRender();
+      return;
+    }
+
+    const editButton = event.target.closest("[data-glow-edit]");
+    if (editButton) {
+      openGlowPopup(spotId, editButton);
+    }
+  });
+
+  refs.addGlowBtn.addEventListener("click", () => {
+    if (state.effects.glow.spots.length >= MAX_GLOW_SPOTS) {
+      showMakerToast("Maximum of 10 glow spots reached.");
+      return;
+    }
+
+    const spot = createGlowSpot(randomPleasingColor(), 50, 50, 30, 50, "circle");
+    state.effects.glow.spots.push(spot);
+    state.effects.glow.enabled = true;
+    renderGlowList();
+    scheduleRender();
+
+    const editButton = refs.glowList.querySelector(`[data-glow-id="${spot.id}"] [data-glow-edit]`);
+    if (editButton) {
+      openGlowPopup(spot.id, editButton);
+    }
+  });
+
   refs.effectsStack.addEventListener("click", (event) => {
     const toggle = event.target.closest("[data-effect-toggle]");
     if (toggle) {
@@ -1229,15 +1718,6 @@ const createGradientMakerApp = () => {
       }
 
       targetEffect.enabled = !targetEffect.enabled;
-      state.activePreset = "";
-      renderEffects();
-      scheduleRender();
-      return;
-    }
-
-    const glowCountButton = event.target.closest("[data-glow-count]");
-    if (glowCountButton) {
-      ensureGlowSpotCount(Number(glowCountButton.dataset.glowCount) || 1);
       state.activePreset = "";
       renderEffects();
       scheduleRender();
@@ -1260,34 +1740,7 @@ const createGradientMakerApp = () => {
       }
 
       scheduleRender();
-      return;
     }
-
-    const spotCard = event.target.closest("[data-glow-spot-id]");
-    if (!spotCard) {
-      return;
-    }
-
-    const spot = state.effects.glow.spots.find((item) => item.id === spotCard.dataset.glowSpotId);
-    if (!spot) {
-      return;
-    }
-
-    if (event.target.matches("[data-glow-color]")) {
-      spot.color = event.target.value;
-    }
-
-    if (event.target.matches("[data-glow-axis]")) {
-      const axis = event.target.dataset.glowAxis;
-      spot[axis] = clamp(Number(event.target.value) || 0, 0, 100);
-      const label = event.target.closest(".effect-range-wrap")?.querySelector(".effect-range-label span:last-child");
-      if (label) {
-        label.textContent = `${spot[axis]}%`;
-      }
-    }
-
-    state.activePreset = "";
-    scheduleRender();
   });
 
   refs.presetRow.addEventListener("click", (event) => {

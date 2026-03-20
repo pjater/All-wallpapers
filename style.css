@@ -1809,12 +1809,16 @@ main {
   backdrop-filter: blur(12px);
 }
 
+.maker-panel {
+  position: relative;
+  overflow: visible;
+}
+
 .panel-section,
 .stop-row,
 .stop-range-wrap,
 .angle-controls,
 .effect-card,
-.glow-spot-card,
 .maker-field,
 .maker-select-wrap {
   min-width: 0;
@@ -1886,13 +1890,37 @@ main {
 
 .stop-row {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 0.75rem;
   padding: 0.75rem;
   border-radius: var(--radius-md);
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(255, 255, 255, 0.03);
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.color-stop-row {
+  cursor: default;
+}
+
+.color-stop-row.is-drag-over {
+  border-top: 2px solid var(--accent);
+}
+
+.color-stop-row.is-dragging {
+  opacity: 0.76;
+}
+
+.drag-handle {
+  color: var(--text-600);
+  cursor: grab;
+  flex-shrink: 0;
+}
+
+.color-stop-row:active .drag-handle,
+.color-stop-row.is-dragging .drag-handle {
+  cursor: grabbing;
 }
 
 .stop-color,
@@ -1972,6 +2000,257 @@ main {
   cursor: not-allowed;
 }
 
+.glow-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.glow-item {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.55rem 0.7rem;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.glow-item:hover {
+  background: var(--glass);
+  border-color: var(--glass-border);
+}
+
+.glow-item-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  flex-shrink: 0;
+}
+
+.glow-item-label {
+  color: var(--text-100);
+  font: 600 0.92rem "Manrope", sans-serif;
+}
+
+.glow-item-spacer {
+  flex: 1;
+  min-width: 0;
+}
+
+.glow-item-hint {
+  color: var(--text-600);
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
+.glow-item-btn,
+.glow-delete-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-600);
+  cursor: pointer;
+  transition: color 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+}
+
+.glow-item-btn:hover {
+  color: var(--text-100);
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.glow-delete-btn:hover {
+  color: #f87171;
+  background: rgba(248, 113, 113, 0.08);
+  border-color: rgba(248, 113, 113, 0.16);
+}
+
+.glow-popup {
+  position: absolute;
+  background: rgba(10, 10, 15, 0.95);
+  backdrop-filter: blur(18px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-2);
+  padding: 1.2rem;
+  width: 300px;
+  z-index: 100;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 0.22s ease, transform 0.22s ease;
+}
+
+.glow-popup.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.glow-popup-inner {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.popup-label {
+  display: block;
+  margin-bottom: 0.4rem;
+  color: var(--text-400);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.popup-color-input {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 100%;
+  height: 36px;
+  border-radius: 10px;
+  border: 1px solid var(--glass-border);
+  cursor: pointer;
+  padding: 2px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.popup-color-input::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.popup-color-input::-webkit-color-swatch,
+.popup-color-input::-moz-color-swatch {
+  border: 0;
+  border-radius: 8px;
+}
+
+.popup-shape-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.popup-shape-btn {
+  min-height: 34px;
+  padding: 0.48rem 0.72rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-400);
+  font: 700 0.78rem "Manrope", sans-serif;
+  cursor: pointer;
+  transition: border-color 0.2s ease, background 0.2s ease, color 0.2s ease;
+}
+
+.popup-shape-btn.is-active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.mini-monitor {
+  position: relative;
+  width: 260px;
+  height: 146px;
+  background: var(--bg-soft);
+  border-radius: 10px;
+  border: 1px solid var(--glass-border);
+  cursor: crosshair;
+  overflow: hidden;
+}
+
+.mini-monitor-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.mini-monitor-handles {
+  position: absolute;
+  inset: 0;
+}
+
+.mini-monitor-handle {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 0 1px rgba(10, 10, 15, 0.3);
+}
+
+.mini-monitor-handle.is-active {
+  width: 16px;
+  height: 16px;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(47, 140, 255, 0.14);
+}
+
+.mini-monitor-handle:not(.is-active) {
+  pointer-events: none;
+}
+
+.mini-monitor-meta {
+  display: flex;
+  gap: 0.85rem;
+  color: var(--text-600);
+  font-size: 0.78rem;
+}
+
+.popup-range-row {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.popup-range-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  color: var(--text-600);
+  font-size: 0.78rem;
+}
+
+.popup-hint {
+  color: var(--text-600);
+  font-size: 0.76rem;
+}
+
+.glow-popup .btn {
+  width: 100%;
+}
+
+.maker-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 1.4rem;
+  transform: translate(-50%, 8px);
+  background: rgba(10, 10, 15, 0.9);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(12px);
+  border-radius: 999px;
+  padding: 0.55rem 1.2rem;
+  font-size: 0.85rem;
+  color: var(--text-100);
+  z-index: 200;
+  opacity: 0;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.maker-toast.is-visible {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
 .angle-controls {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
@@ -2012,8 +2291,7 @@ main {
 }
 
 .maker-field-grid,
-.custom-resolution-fields,
-.glow-spot-grid {
+.custom-resolution-fields {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.75rem;
@@ -2129,37 +2407,6 @@ main {
 
 .effect-controls[hidden] {
   display: none;
-}
-
-.glow-spots {
-  display: grid;
-  gap: 0.8rem;
-}
-
-.glow-count-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.45rem;
-}
-
-.glow-spot-card {
-  padding: 0.75rem;
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.02);
-  display: grid;
-  gap: 0.7rem;
-}
-
-.glow-spot-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-}
-
-.glow-spot-head strong {
-  font: 700 0.84rem "Syne", sans-serif;
 }
 
 .preset-row {
@@ -2822,9 +3069,19 @@ footer {
 
   .angle-controls,
   .maker-field-grid,
-  .custom-resolution-fields,
-  .glow-spot-grid {
+  .custom-resolution-fields {
     grid-template-columns: 1fr;
+  }
+
+  .glow-popup {
+    width: min(300px, calc(100vw - 3rem));
+  }
+
+  .mini-monitor {
+    width: 100%;
+    max-width: 260px;
+    aspect-ratio: 16 / 9;
+    height: auto;
   }
 
   .angle-picker {
