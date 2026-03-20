@@ -1741,6 +1741,19 @@ main {
   margin-bottom: 0;
 }
 
+.maker-stack {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.4rem;
+  align-items: start;
+}
+
+.maker-controls-stack {
+  display: grid;
+  gap: 1rem;
+  width: 100%;
+}
+
 .maker-layout {
   display: grid;
   grid-template-columns: 1fr;
