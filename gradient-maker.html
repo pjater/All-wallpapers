@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Syne:wght@500;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="style.css?v=maker-stack-2" />
+  <link rel="stylesheet" href="style.css?v=maker-ui-4" />
 </head>
 <body data-page="gradient-maker">
   <div class="mesh" aria-hidden="true"></div>
@@ -49,7 +49,7 @@
 
         <div class="maker-controls-stack">
           <div class="maker-panel reveal delay-1">
-            <section class="panel-section">
+            <section class="panel-section" data-advanced-section>
               <div class="panel-head">
                 <span class="panel-label">Gradient Type</span>
               </div>
@@ -62,9 +62,12 @@
               </div>
               <div class="stop-list" id="colorStopsList"></div>
               <button class="btn-ghost maker-inline-btn" id="addColorStopBtn" type="button">Add Color Stop</button>
+              <button class="btn-ghost maker-settings-toggle" id="toggleMakerSettingsBtn" type="button" aria-expanded="false">
+                Show More Settings
+              </button>
             </section>
 
-            <section class="panel-section">
+            <section class="panel-section" data-advanced-section>
               <div class="panel-head">
                 <span class="panel-label">Glow Spots</span>
               </div>
@@ -72,28 +75,28 @@
               <button class="btn-ghost maker-inline-btn" id="addGlowSpotBtn" type="button">Add Glow Spot</button>
             </section>
 
-            <section class="panel-section" id="directionPanel">
+            <section class="panel-section" id="directionPanel" data-advanced-section>
               <div class="panel-head">
                 <span class="panel-label">Direction / Angle</span>
               </div>
               <div id="directionControls"></div>
             </section>
 
-            <section class="panel-section">
+            <section class="panel-section" data-advanced-section>
               <div class="panel-head">
                 <span class="panel-label">Effects</span>
               </div>
               <div class="effects-stack" id="effectsStack"></div>
             </section>
 
-            <section class="panel-section">
+            <section class="panel-section" data-advanced-section>
               <div class="panel-head">
                 <span class="panel-label">Presets</span>
               </div>
               <div class="preset-row" id="presetRow"></div>
             </section>
 
-            <section class="panel-section">
+            <section class="panel-section" data-advanced-section>
               <div class="panel-head">
                 <span class="panel-label">Randomize</span>
               </div>
@@ -156,6 +159,6 @@
   </footer>
 
   <script src="script.js"></script>
-  <script src="gradient-maker.js"></script>
+  <script src="gradient-maker.js?v=maker-ui-4"></script>
 </body>
 </html>

@@ -1752,6 +1752,9 @@ main {
   display: grid;
   gap: 1rem;
   width: 100%;
+  position: relative;
+  isolation: isolate;
+  z-index: 1;
 }
 
 .maker-layout {
@@ -1812,6 +1815,17 @@ main {
 .maker-panel {
   position: relative;
   overflow: visible;
+  z-index: 3;
+  transition: padding-bottom 0.22s ease;
+}
+
+.maker-panel.is-collapsed [data-advanced-section] {
+  display: none;
+}
+
+.maker-export {
+  position: relative;
+  z-index: 1;
 }
 
 .panel-section,
@@ -1883,6 +1897,18 @@ main {
   width: 100%;
 }
 
+.maker-settings-toggle {
+  width: 100%;
+  margin-top: 0.7rem;
+}
+
+.maker-settings-toggle.is-expanded {
+  border-color: rgba(47, 140, 255, 0.6);
+  background: rgba(47, 140, 255, 0.12);
+  color: var(--text-100);
+  box-shadow: 0 10px 22px rgba(47, 140, 255, 0.18);
+}
+
 .stop-list {
   display: grid;
   gap: 0.75rem;
@@ -1891,6 +1917,7 @@ main {
 .stop-row {
   display: grid;
   grid-template-columns: auto auto minmax(0, 1fr) auto;
+  grid-template-areas: "handle swatch range delete";
   align-items: center;
   gap: 0.75rem;
   padding: 0.75rem;
@@ -1914,50 +1941,145 @@ main {
 
 .drag-handle {
   color: var(--text-600);
-  cursor: grab;
+  cursor: inherit;
   flex-shrink: 0;
 }
 
-.color-stop-row:active .drag-handle,
-.color-stop-row.is-dragging .drag-handle {
+.drag-handle-btn {
+  grid-area: handle;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-600);
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: grab;
+  transition: border-color 0.2s ease, background 0.2s ease, color 0.2s ease;
+}
+
+.drag-handle-btn .drag-handle {
+  pointer-events: none;
+}
+
+.drag-handle-btn:hover {
+  color: var(--text-100);
+  border-color: rgba(47, 140, 255, 0.35);
+  background: rgba(47, 140, 255, 0.08);
+}
+
+.drag-handle-btn:focus-visible,
+.stop-color-shell:focus-within,
+.popup-color-shell:focus-within {
+  outline: none;
+  border-color: rgba(47, 140, 255, 0.58);
+  box-shadow: 0 0 0 2px rgba(47, 140, 255, 0.16), 0 12px 26px rgba(47, 140, 255, 0.18);
+}
+
+.drag-handle-btn:active,
+.color-stop-row.is-dragging .drag-handle-btn {
   cursor: grabbing;
 }
 
+.stop-color-shell,
+.popup-color-shell {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 14px;
+  padding: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.08), rgba(47, 140, 255, 0.08)),
+    rgba(255, 255, 255, 0.03);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 10px 22px rgba(0, 0, 0, 0.16);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.stop-color-shell::after,
+.popup-color-shell::after {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  border-radius: inherit;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  pointer-events: none;
+}
+
+.stop-color-shell:hover,
+.popup-color-shell:hover {
+  border-color: rgba(47, 140, 255, 0.36);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 12px 26px rgba(47, 140, 255, 0.14);
+}
+
+.stop-color-shell {
+  grid-area: swatch;
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  flex-shrink: 0;
+}
+
+.popup-color-shell {
+  width: 100%;
+  min-height: 44px;
+  border-radius: 12px;
+}
+
 .stop-color,
-.glow-color-input {
+.popup-color-input {
   appearance: none;
   -webkit-appearance: none;
+  display: block;
+  width: 100%;
+  height: 100%;
   padding: 0;
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  border: 2px solid var(--glass-border);
+  border: 0;
   cursor: pointer;
   background: transparent;
   overflow: hidden;
 }
 
+.stop-color {
+  border-radius: 11px;
+}
+
+.popup-color-input {
+  min-height: 36px;
+  border-radius: 9px;
+}
+
 .stop-color::-webkit-color-swatch-wrapper,
-.glow-color-input::-webkit-color-swatch-wrapper {
+.popup-color-input::-webkit-color-swatch-wrapper {
   padding: 0;
 }
 
 .stop-color::-webkit-color-swatch,
-.glow-color-input::-webkit-color-swatch {
+.popup-color-input::-webkit-color-swatch {
   border: 0;
-  border-radius: 50%;
+  border-radius: inherit;
 }
 
 .stop-color::-moz-color-swatch,
-.glow-color-input::-moz-color-swatch {
+.popup-color-input::-moz-color-swatch {
   border: 0;
-  border-radius: 50%;
+  border-radius: inherit;
 }
 
 .stop-range-wrap,
 .effect-range-wrap {
   display: grid;
   gap: 0.35rem;
+}
+
+.stop-range-wrap {
+  grid-area: range;
 }
 
 .stop-range-label,
@@ -1979,6 +2101,7 @@ main {
 }
 
 .stop-delete {
+  grid-area: delete;
   width: 34px;
   height: 34px;
   border-radius: 999px;
@@ -2083,7 +2206,7 @@ main {
   box-shadow: var(--shadow-2);
   padding: 1.2rem;
   width: 300px;
-  z-index: 100;
+  z-index: 40;
   opacity: 0;
   transform: translateY(6px);
   transition: opacity 0.22s ease, transform 0.22s ease;
@@ -2106,28 +2229,6 @@ main {
   font-size: 0.72rem;
   text-transform: uppercase;
   letter-spacing: 0.1em;
-}
-
-.popup-color-input {
-  appearance: none;
-  -webkit-appearance: none;
-  width: 100%;
-  height: 36px;
-  border-radius: 10px;
-  border: 1px solid var(--glass-border);
-  cursor: pointer;
-  padding: 2px;
-  background: rgba(255, 255, 255, 0.03);
-}
-
-.popup-color-input::-webkit-color-swatch-wrapper {
-  padding: 0;
-}
-
-.popup-color-input::-webkit-color-swatch,
-.popup-color-input::-moz-color-swatch {
-  border: 0;
-  border-radius: 8px;
 }
 
 .popup-shape-row {
@@ -3090,14 +3191,17 @@ footer {
   }
 
   .stop-row {
-    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-columns: auto auto auto;
+    grid-template-areas:
+      "handle swatch delete"
+      "range range range";
+    align-items: center;
   }
 
   .stop-delete {
-    grid-column: 1 / -1;
-    width: 100%;
-    border-radius: 12px;
-    height: 38px;
+    width: 34px;
+    height: 34px;
+    border-radius: 999px;
   }
 
   .collection-overlay {

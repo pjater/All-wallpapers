@@ -754,6 +754,7 @@ const createGradientMakerApp = () => {
     typeRow: document.getElementById("gradientTypeRow"),
     stopList: document.getElementById("colorStopsList"),
     addStopBtn: document.getElementById("addColorStopBtn"),
+    toggleSettingsBtn: document.getElementById("toggleMakerSettingsBtn"),
     glowList: document.getElementById("glowList"),
     addGlowBtn: document.getElementById("addGlowSpotBtn"),
     directionPanel: document.getElementById("directionPanel"),
@@ -770,9 +771,13 @@ const createGradientMakerApp = () => {
   };
 
   let state = createDefaultState();
+  let isSettingsExpanded = false;
   let dragCleanup = null;
   let activeGlowPopup = null;
   let draggedStopId = "";
+  const baseMakerPanelPaddingBottom = refs.makerPanel
+    ? Number.parseFloat(window.getComputedStyle(refs.makerPanel).paddingBottom) || 0
+    : 0;
 
   const syncCanvasResolution = () => {
     refs.canvas.width = state.width;
@@ -840,16 +845,27 @@ const createGradientMakerApp = () => {
     refs.stopList.innerHTML = state.stops
       .map(
         (stop, index) => `
-          <div class="stop-row color-stop-row" data-stop-id="${stop.id}" draggable="true">
-            <svg class="drag-handle" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-              <circle cx="9" cy="5" r="1"></circle>
-              <circle cx="9" cy="12" r="1"></circle>
-              <circle cx="9" cy="19" r="1"></circle>
-              <circle cx="15" cy="5" r="1"></circle>
-              <circle cx="15" cy="12" r="1"></circle>
-              <circle cx="15" cy="19" r="1"></circle>
-            </svg>
-            <input class="stop-color" type="color" value="${stop.color}" aria-label="Color stop ${index + 1}" data-stop-color />
+          <div class="stop-row color-stop-row" data-stop-id="${stop.id}">
+            <button
+              class="drag-handle-btn"
+              type="button"
+              draggable="true"
+              data-stop-drag-handle
+              aria-label="Reorder color stop ${index + 1}"
+              title="Drag to reorder"
+            >
+              <svg class="drag-handle" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <circle cx="9" cy="5" r="1"></circle>
+                <circle cx="9" cy="12" r="1"></circle>
+                <circle cx="9" cy="19" r="1"></circle>
+                <circle cx="15" cy="5" r="1"></circle>
+                <circle cx="15" cy="12" r="1"></circle>
+                <circle cx="15" cy="19" r="1"></circle>
+              </svg>
+            </button>
+            <label class="stop-color-shell" title="Pick color for stop ${index + 1}">
+              <input class="stop-color" type="color" value="${stop.color}" aria-label="Color stop ${index + 1}" data-stop-color />
+            </label>
             <div class="stop-range-wrap">
               <div class="stop-range-label">
                 <span>Position</span>
@@ -918,16 +934,55 @@ const createGradientMakerApp = () => {
 
   const getGlowSpotById = (spotId) => state.effects.glow.spots.find((spot) => spot.id === spotId);
 
+  const resetMakerPanelClearance = () => {
+    if (!refs.makerPanel) {
+      return;
+    }
+
+    refs.makerPanel.style.paddingBottom = "";
+  };
+
+  const syncMakerPanelClearance = (popup) => {
+    if (!refs.makerPanel || !popup) {
+      resetMakerPanelClearance();
+      return;
+    }
+
+    resetMakerPanelClearance();
+    const popupBottom = popup.offsetTop + popup.offsetHeight;
+    const overflow = popupBottom + 16 - refs.makerPanel.clientHeight;
+    if (overflow > 0) {
+      refs.makerPanel.style.paddingBottom = `${baseMakerPanelPaddingBottom + overflow}px`;
+    }
+  };
+
   const closeGlowPopup = () => {
     if (!activeGlowPopup) {
+      resetMakerPanelClearance();
       return;
     }
 
     const { element, cleanup } = activeGlowPopup;
     cleanup?.();
     activeGlowPopup = null;
+    resetMakerPanelClearance();
     element.classList.remove("is-visible");
     setTimeout(() => element.remove(), 220);
+  };
+
+  const syncMakerSettingsUi = () => {
+    if (!refs.makerPanel || !refs.toggleSettingsBtn) {
+      return;
+    }
+
+    refs.makerPanel.classList.toggle("is-collapsed", !isSettingsExpanded);
+    refs.toggleSettingsBtn.classList.toggle("is-expanded", isSettingsExpanded);
+    refs.toggleSettingsBtn.setAttribute("aria-expanded", isSettingsExpanded ? "true" : "false");
+    refs.toggleSettingsBtn.textContent = isSettingsExpanded ? "Show Fewer Settings" : "Show More Settings";
+
+    if (!isSettingsExpanded) {
+      closeGlowPopup();
+    }
   };
 
   const updateGlowPopupMeta = () => {
@@ -1017,7 +1072,9 @@ const createGradientMakerApp = () => {
       <div class="glow-popup-inner">
         <div>
           <span class="popup-label">Color</span>
-          <input class="popup-color-input" type="color" value="${spot.color}" />
+          <label class="popup-color-shell">
+            <input class="popup-color-input" type="color" value="${spot.color}" />
+          </label>
         </div>
         <div>
           <span class="popup-label">Shape</span>
@@ -1086,6 +1143,7 @@ const createGradientMakerApp = () => {
     const top = buttonRect.bottom - panelRect.top + 10;
     popup.style.left = `${left}px`;
     popup.style.top = `${top}px`;
+    syncMakerPanelClearance(popup);
 
     const handleOutsideClick = (event) => {
       if (popup.contains(event.target) || event.target.closest("[data-glow-edit]")) {
@@ -1196,6 +1254,7 @@ const createGradientMakerApp = () => {
 
     requestAnimationFrame(() => {
       popup.classList.add("is-visible");
+      syncMakerPanelClearance(popup);
       renderGlowPopupPreview();
     });
   };
@@ -1482,6 +1541,7 @@ const createGradientMakerApp = () => {
     renderEffects();
     renderPresets();
     renderResolutionButtons();
+    syncMakerSettingsUi();
     updateCanvasMeta();
     scheduleGlowPreviewSync();
   };
@@ -1561,6 +1621,11 @@ const createGradientMakerApp = () => {
     scheduleRender();
   });
 
+  refs.toggleSettingsBtn?.addEventListener("click", () => {
+    isSettingsExpanded = !isSettingsExpanded;
+    syncMakerSettingsUi();
+  });
+
   refs.stopList.addEventListener("input", (event) => {
     const row = event.target.closest(".color-stop-row");
     if (!row) {
@@ -1602,8 +1667,10 @@ const createGradientMakerApp = () => {
   });
 
   refs.stopList.addEventListener("dragstart", (event) => {
-    const row = event.target.closest(".color-stop-row");
-    if (!row) {
+    const handle = event.target.closest("[data-stop-drag-handle]");
+    const row = handle?.closest(".color-stop-row");
+    if (!handle || !row) {
+      event.preventDefault();
       return;
     }
 
@@ -1614,6 +1681,10 @@ const createGradientMakerApp = () => {
   });
 
   refs.stopList.addEventListener("dragover", (event) => {
+    if (!draggedStopId) {
+      return;
+    }
+
     const row = event.target.closest(".color-stop-row");
     if (!row || row.dataset.stopId === draggedStopId) {
       return;
@@ -1625,6 +1696,11 @@ const createGradientMakerApp = () => {
   });
 
   refs.stopList.addEventListener("drop", (event) => {
+    if (!draggedStopId) {
+      cleanupStopDragIndicators();
+      return;
+    }
+
     const row = event.target.closest(".color-stop-row");
     if (!row || row.dataset.stopId === draggedStopId) {
       cleanupStopDragIndicators();
