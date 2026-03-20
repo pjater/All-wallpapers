@@ -520,6 +520,7 @@ const renderWallpaperGrid = (container, files) => {
 
 const setupHeroPreviewStack = () => {
   const stack = document.getElementById("heroPreviewStack");
+  const meta = document.getElementById("heroPreviewMeta");
   if (!stack) {
     return;
   }
@@ -560,6 +561,15 @@ const setupHeroPreviewStack = () => {
     });
   };
 
+  const syncMeta = (file) => {
+    if (!meta) {
+      return;
+    }
+
+    meta.textContent = toTitle(file);
+    meta.style.opacity = "1";
+  };
+
   const renderStack = (animated = false) => {
     const visibleItems = Math.min(3, pool.length);
     const currentFiles = [];
@@ -597,14 +607,29 @@ const setupHeroPreviewStack = () => {
   });
 
   renderStack();
+  syncMeta(pool[startIndex]);
 
   setInterval(() => {
     if (paused) {
       return;
     }
 
-    startIndex = (startIndex + 1) % pool.length;
-    renderStack(true);
+    if (meta) {
+      meta.style.opacity = "0";
+    }
+
+    setTimeout(() => {
+      if (paused) {
+        if (meta) {
+          meta.style.opacity = "1";
+        }
+        return;
+      }
+
+      startIndex = (startIndex + 1) % pool.length;
+      renderStack(true);
+      syncMeta(pool[startIndex]);
+    }, 150);
   }, HERO_ROTATE_MS);
 };
 

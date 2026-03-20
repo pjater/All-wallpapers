@@ -150,6 +150,7 @@ img {
 }
 
 .nav-link {
+  position: relative;
   color: var(--text-400);
   padding: 0.5rem 0.9rem;
   border-radius: 999px;
@@ -161,6 +162,19 @@ img {
 .nav-link.active {
   color: var(--text-100);
   background: rgba(255, 255, 255, 0.07);
+}
+
+.nav-link.active::after {
+  content: "";
+  position: absolute;
+  bottom: -3px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 6px var(--accent);
 }
 
 .btn,
@@ -439,6 +453,8 @@ main {
 
 .hero-preview-meta {
   font-size: 0.9rem;
+  opacity: 0.88;
+  transition: opacity 0.3s ease;
 }
 
 .section-head {
@@ -1184,6 +1200,37 @@ main {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 1rem;
+}
+
+.about-mosaic {
+  width: var(--container);
+  margin: 0 auto;
+  position: relative;
+  padding-bottom: 1.4rem;
+}
+
+.about-mosaic::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0;
+  height: 38%;
+  background: linear-gradient(to bottom, rgba(10, 10, 15, 0), var(--bg));
+  pointer-events: none;
+}
+
+.about-mosaic-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.about-mosaic-grid img {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-radius: var(--radius-lg);
+  opacity: 0.72;
+  box-shadow: var(--shadow-1);
 }
 
 .text-card {
@@ -1968,14 +2015,59 @@ main {
 footer {
   width: var(--container);
   margin: 0 auto;
-  padding: 2.2rem 0 3rem;
+  padding: 3rem 0 2.5rem;
+  border-top: 1px solid var(--glass-border);
+}
+
+.footer-grid {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr;
+  gap: 3rem;
+  padding-top: 1.15rem;
+}
+
+.footer-column {
+  display: grid;
+  align-content: start;
+  gap: 0.75rem;
+}
+
+.footer-brand {
+  width: max-content;
+}
+
+.footer-tagline,
+.footer-copy {
+  color: var(--text-400);
+  font-size: 0.88rem;
+}
+
+.footer-copy {
   color: var(--text-600);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 1rem;
-  flex-wrap: wrap;
-  font-size: 0.85rem;
+}
+
+.footer-heading {
+  margin: 0;
+  color: var(--text-100);
+  font-family: "Syne", sans-serif;
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.footer-links {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.footer-link {
+  width: max-content;
+  color: var(--text-400);
+  transition: color 0.2s ease;
+}
+
+.footer-link:hover {
+  color: var(--text-100);
 }
 
 .reveal {
@@ -2218,6 +2310,10 @@ footer {
     padding: 1.5rem;
   }
 
+  .about-mosaic-grid {
+    gap: 0.55rem;
+  }
+
   .collections-grid,
   .setup-card-grid,
   .detail-meta-row {
@@ -2259,6 +2355,11 @@ footer {
 
   .related-grid .wallpaper-card {
     grid-column: 1 / -1;
+  }
+
+  .footer-grid {
+    grid-template-columns: 1fr;
+    gap: 1.8rem;
   }
 
   .lightbox {
