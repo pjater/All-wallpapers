@@ -1793,6 +1793,51 @@ main {
   background: var(--bg-soft);
 }
 
+.maker-history-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.85rem;
+  margin-bottom: 0.85rem;
+  flex-wrap: wrap;
+}
+
+.maker-history-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.history-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  padding: 0.45rem;
+  color: var(--text-400);
+  cursor: pointer;
+  transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.history-btn:hover:not(:disabled) {
+  color: var(--text-100);
+  border-color: var(--accent);
+  background: rgba(47, 140, 255, 0.08);
+  box-shadow: 0 0 16px rgba(47, 140, 255, 0.14);
+}
+
+.history-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.history-step-label {
+  color: var(--text-600);
+  font-size: 0.78rem;
+}
+
 .canvas-meta {
   margin-top: 0.75rem;
   text-align: center;
@@ -1895,6 +1940,10 @@ main {
 .maker-download-btn,
 .maker-copy-btn {
   width: 100%;
+}
+
+.maker-save-btn {
+  margin-top: 0.65rem;
 }
 
 .maker-settings-toggle {
@@ -2725,6 +2774,93 @@ main {
   font-size: 0.7rem;
   font-weight: 700;
   line-height: 1.2;
+}
+
+.saved-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.6rem;
+}
+
+.saved-item {
+  display: grid;
+  gap: 0.42rem;
+  min-width: 0;
+}
+
+.saved-item-media {
+  position: relative;
+}
+
+.saved-item-thumb {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  display: block;
+  border-radius: 8px;
+  border: 1px solid var(--glass-border);
+}
+
+.saved-item-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(10, 10, 15, 0.72);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+.saved-item:hover .saved-item-overlay,
+.saved-item:focus-within .saved-item-overlay {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.saved-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  padding: 0.4rem;
+  color: var(--text-100);
+  cursor: pointer;
+  transition: border-color 0.2s ease, background 0.2s ease, color 0.2s ease, transform 0.2s ease;
+}
+
+.saved-action-btn:hover {
+  border-color: var(--accent);
+  background: rgba(47, 140, 255, 0.1);
+  transform: translateY(-1px);
+}
+
+.saved-item-name {
+  color: var(--text-400);
+  font-size: 0.75rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.saved-empty {
+  grid-column: 1 / -1;
+  min-height: 88px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: var(--text-600);
+  font-size: 0.82rem;
+  padding: 0.85rem;
+  border-radius: 12px;
+  border: 1px dashed rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.02);
 }
 
 .maker-export {

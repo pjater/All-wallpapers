@@ -112,15 +112,21 @@ const radialShapes = [
 
 const MAX_STOPS = 6;
 const MAX_GLOW_SPOTS = 10;
+const SAVED_GRADIENTS_MAX = 12;
 const MAX_CUSTOM_WIDTH = 7680;
 const MAX_CUSTOM_HEIGHT = 4320;
 const GLOW_PREVIEW_RENDER_MS = 32;
+const HISTORY_MAX = 20;
 
 let stopIdCounter = 0;
 let glowSpotIdCounter = 0;
 let noiseCache = new Map();
 let renderDebounceTimer = 0;
 let glowPreviewDebounceTimer = 0;
+let history = [];
+let historyIndex = -1;
+let savedGradients = [];
+let savedGradientNameCounter = 0;
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 
@@ -843,6 +849,9 @@ const createGradientMakerApp = () => {
     canvas,
     makerPanel: document.querySelector(".maker-panel"),
     canvasMeta: document.getElementById("canvasMeta"),
+    undoBtn: document.getElementById("undoGradientBtn"),
+    redoBtn: document.getElementById("redoGradientBtn"),
+    historyStepLabel: document.getElementById("historyStepLabel"),
     typeRow: document.getElementById("gradientTypeRow"),
     stopList: document.getElementById("colorStopsList"),
     addStopBtn: document.getElementById("addColorStopBtn"),
@@ -853,6 +862,8 @@ const createGradientMakerApp = () => {
     directionControls: document.getElementById("directionControls"),
     effectsStack: document.getElementById("effectsStack"),
     presetRow: document.getElementById("presetRow"),
+    saveCurrentBtn: document.getElementById("saveCurrentGradientBtn"),
+    savedGrid: document.getElementById("savedGradientsGrid"),
     resolutionRow: document.getElementById("resolutionRow"),
     customResolutionFields: document.getElementById("customResolutionFields"),
     customWidthInput: document.getElementById("customWidthInput"),
@@ -862,12 +873,18 @@ const createGradientMakerApp = () => {
     randomizeBtn: document.getElementById("randomizeGradientBtn")
   };
 
+  history = [];
+  historyIndex = -1;
+  savedGradients = [];
+  savedGradientNameCounter = 0;
+
   let state = createDefaultState();
   let isSettingsExpanded = false;
   let dragCleanup = null;
   let activeGlowPopup = null;
   let activeColorPopover = null;
   let draggedStopId = "";
+  let keyboardCleanup = null;
   const baseMakerPanelPaddingBottom = refs.makerPanel
     ? Number.parseFloat(window.getComputedStyle(refs.makerPanel).paddingBottom) || 0
     : 0;
@@ -900,6 +917,52 @@ const createGradientMakerApp = () => {
       setTimeout(() => toast.remove(), 250);
     }, 2000);
   };
+
+  const getConfigSnapshot = (config = state) => deepClone(config);
+
+  const updateUndoRedoButtons = () => {
+    const total = history.length;
+    const currentStep = total ? historyIndex + 1 : 0;
+
+    if (refs.undoBtn) {
+      refs.undoBtn.disabled = historyIndex <= 0;
+    }
+
+    if (refs.redoBtn) {
+      refs.redoBtn.disabled = historyIndex >= total - 1;
+    }
+
+    if (refs.historyStepLabel) {
+      refs.historyStepLabel.textContent = `Step ${currentStep} of ${total}`;
+    }
+  };
+
+  const pushHistory = (config) => {
+    history = history.slice(0, historyIndex + 1);
+    history.push(getConfigSnapshot(config));
+    if (history.length > HISTORY_MAX) {
+      history.shift();
+    }
+    historyIndex = history.length - 1;
+    updateUndoRedoButtons();
+  };
+
+  const createSavedGradientThumbnail = (config) =>
+    new Promise((resolve) => {
+      const thumbCanvas = document.createElement("canvas");
+      thumbCanvas.width = 120;
+      thumbCanvas.height = 68;
+      renderCanvas(thumbCanvas, config);
+
+      if (config.type === "mesh") {
+        requestAnimationFrame(() => {
+          resolve(thumbCanvas.toDataURL("image/png"));
+        });
+        return;
+      }
+
+      resolve(thumbCanvas.toDataURL("image/png"));
+    });
 
   const scheduleGlowPreviewSync = () => {
     if (!activeGlowPopup) {
@@ -1141,7 +1204,7 @@ const createGradientMakerApp = () => {
     const hexInput = popover.querySelector(".maker-color-hex-input");
     const doneButton = popover.querySelector(".maker-color-done");
 
-    const applyColor = () => {
+    const syncPickerUi = () => {
       const nextColor = hsvToHex(pickerState.h, pickerState.s, pickerState.v);
       const currentHue = Math.round(pickerState.h);
 
@@ -1153,6 +1216,11 @@ const createGradientMakerApp = () => {
       hueValue.textContent = `${currentHue}°`;
       hueInput.value = String(currentHue);
       hexInput.value = nextColor;
+      return nextColor;
+    };
+
+    const applyColor = () => {
+      const nextColor = syncPickerUi();
       onChange(nextColor);
     };
 
@@ -1245,7 +1313,7 @@ const createGradientMakerApp = () => {
     doneButton.addEventListener("click", closeColorPopover);
 
     requestAnimationFrame(() => {
-      applyColor();
+      syncPickerUi();
       positionColorPopover(popover, anchor);
       popover.classList.add("is-visible");
     });
@@ -1376,6 +1444,7 @@ const createGradientMakerApp = () => {
     renderGlowPopupHandles();
     updateGlowPopupMeta();
     scheduleRender();
+    pushHistory(state);
   };
 
   const openGlowPopup = (spotId, button) => {
@@ -1516,6 +1585,7 @@ const createGradientMakerApp = () => {
       renderGlowPopupHandles();
       updateGlowPopupMeta();
       scheduleRender();
+      pushHistory(state);
     };
 
     colorTrigger.addEventListener("click", () => {
@@ -1630,6 +1700,7 @@ const createGradientMakerApp = () => {
       state.activePreset = "";
       updateAngleUi();
       scheduleRender();
+      pushHistory(state);
     };
 
     svg.addEventListener("pointerdown", (event) => {
@@ -1652,6 +1723,7 @@ const createGradientMakerApp = () => {
       state.activePreset = "";
       updateAngleUi();
       scheduleRender();
+      pushHistory(state);
     });
   };
 
@@ -1728,6 +1800,7 @@ const createGradientMakerApp = () => {
         state.shape = shapeSelect.value;
         state.activePreset = "";
         scheduleRender();
+        pushHistory(state);
       });
 
       positionSelect?.addEventListener("change", () => {
@@ -1737,18 +1810,21 @@ const createGradientMakerApp = () => {
           customFields.hidden = state.position !== "custom";
         }
         scheduleRender();
+        pushHistory(state);
       });
 
       customX?.addEventListener("input", () => {
         state.customX = clamp(Number(customX.value) || 0, 0, 100);
         state.activePreset = "";
         scheduleRender();
+        pushHistory(state);
       });
 
       customY?.addEventListener("input", () => {
         state.customY = clamp(Number(customY.value) || 0, 0, 100);
         state.activePreset = "";
         scheduleRender();
+        pushHistory(state);
       });
 
       return;
@@ -1861,6 +1937,88 @@ const createGradientMakerApp = () => {
     refs.customHeightInput.value = String(state.height);
   };
 
+  const renderSavedGradients = () => {
+    if (!refs.savedGrid) {
+      return;
+    }
+
+    if (!savedGradients.length) {
+      refs.savedGrid.innerHTML = `
+        <div class="saved-empty">
+          Nothing saved yet. Hit Save Current to capture a gradient.
+        </div>
+      `;
+      return;
+    }
+
+    refs.savedGrid.innerHTML = savedGradients
+      .map(
+        (item, index) => `
+          <article class="saved-item" data-saved-index="${index}">
+            <div class="saved-item-media">
+              <img class="saved-item-thumb" src="${item.thumbnail}" alt="${item.name}" />
+              <div class="saved-item-overlay">
+                <button class="saved-action-btn" type="button" data-saved-load="${index}" aria-label="Load ${item.name}">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="7 10 12 15 17 10"></polyline>
+                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                  </svg>
+                </button>
+                <button class="saved-action-btn" type="button" data-saved-delete="${index}" aria-label="Delete ${item.name}">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <polyline points="3 6 5 6 21 6"></polyline>
+                    <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path>
+                    <path d="M10 11v6"></path>
+                    <path d="M14 11v6"></path>
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <span class="saved-item-name" title="${item.name}">${item.name}</span>
+          </article>
+        `
+      )
+      .join("");
+  };
+
+  const loadConfig = (config, options = {}) => {
+    const { pushToHistory: shouldPushToHistory = false } = options;
+
+    closeColorPopover();
+    closeGlowPopup();
+    state = getConfigSnapshot(config);
+    renderAllControls();
+    scheduleRender();
+
+    if (shouldPushToHistory) {
+      pushHistory(state);
+      return;
+    }
+
+    updateUndoRedoButtons();
+  };
+
+  const undo = () => {
+    if (historyIndex <= 0) {
+      updateUndoRedoButtons();
+      return;
+    }
+
+    historyIndex -= 1;
+    loadConfig(history[historyIndex], { pushToHistory: false });
+  };
+
+  const redo = () => {
+    if (historyIndex >= history.length - 1) {
+      updateUndoRedoButtons();
+      return;
+    }
+
+    historyIndex += 1;
+    loadConfig(history[historyIndex], { pushToHistory: false });
+  };
+
   const renderAllControls = () => {
     renderTypeButtons();
     renderColorStops();
@@ -1869,12 +2027,14 @@ const createGradientMakerApp = () => {
     renderEffects();
     renderPresets();
     renderResolutionButtons();
+    renderSavedGradients();
     syncMakerSettingsUi();
+    updateUndoRedoButtons();
     updateCanvasMeta();
     scheduleGlowPreviewSync();
   };
 
-  const applyPreset = (preset) => {
+  const createPresetState = (preset) => {
     const currentResolutionId = state.resolutionId;
     const currentWidth = state.width;
     const currentHeight = state.height;
@@ -1896,29 +2056,32 @@ const createGradientMakerApp = () => {
     nextState.height = currentHeight;
     nextState.activePreset = preset.name;
 
-    state = nextState;
-    renderAllControls();
-    scheduleRender();
+    return nextState;
+  };
+
+  const applyPreset = (preset) => {
+    loadConfig(createPresetState(preset), { pushToHistory: true });
   };
 
   const randomizeGradient = () => {
+    const nextState = getConfigSnapshot(state);
     const type = gradientTypeOptions[randomInt(0, gradientTypeOptions.length - 1)].id;
-    state.type = type;
-    state.angle = randomInt(0, 359);
-    state.stops = getRandomizedStops();
-    state.shape = Math.random() > 0.5 ? "circle" : "ellipse";
-    state.position = radialPositions[randomInt(0, radialPositions.length - 2)].id;
-    state.customX = randomInt(18, 82);
-    state.customY = randomInt(18, 82);
-    state.effects.grain.enabled = false;
-    state.effects.vignette.enabled = false;
-    state.effects.glow.enabled = false;
-    state.effects.glow.spots = [createGlowSpot("#ffffff", 50, 50, 30, 50, "circle")];
-    state.activePreset = "";
+
+    nextState.type = type;
+    nextState.angle = randomInt(0, 359);
+    nextState.stops = getRandomizedStops();
+    nextState.shape = Math.random() > 0.5 ? "circle" : "ellipse";
+    nextState.position = radialPositions[randomInt(0, radialPositions.length - 2)].id;
+    nextState.customX = randomInt(18, 82);
+    nextState.customY = randomInt(18, 82);
+    nextState.effects.grain.enabled = false;
+    nextState.effects.vignette.enabled = false;
+    nextState.effects.glow.enabled = false;
+    nextState.effects.glow.spots = [createGlowSpot("#ffffff", 50, 50, 30, 50, "circle")];
+    nextState.activePreset = "";
     noiseCache = new Map();
 
-    renderAllControls();
-    scheduleRender();
+    loadConfig(nextState, { pushToHistory: true });
   };
 
   const setResolution = (resolutionId) => {
@@ -1934,6 +2097,7 @@ const createGradientMakerApp = () => {
 
     renderResolutionButtons();
     scheduleRender();
+    pushHistory(state);
   };
 
   refs.typeRow.addEventListener("click", (event) => {
@@ -1947,6 +2111,7 @@ const createGradientMakerApp = () => {
     renderTypeButtons();
     renderDirectionControls();
     scheduleRender();
+    pushHistory(state);
   });
 
   refs.toggleSettingsBtn?.addEventListener("click", () => {
@@ -1975,6 +2140,7 @@ const createGradientMakerApp = () => {
 
     state.activePreset = "";
     scheduleRender();
+    pushHistory(state);
   });
 
   refs.stopList.addEventListener("click", (event) => {
@@ -1994,6 +2160,7 @@ const createGradientMakerApp = () => {
           updateColorTriggerValue(colorTrigger, stop.color);
           state.activePreset = "";
           scheduleRender();
+          pushHistory(state);
         }
       });
       return;
@@ -2009,6 +2176,7 @@ const createGradientMakerApp = () => {
     state.activePreset = "";
     renderColorStops();
     scheduleRender();
+    pushHistory(state);
   });
 
   refs.stopList.addEventListener("dragstart", (event) => {
@@ -2065,6 +2233,7 @@ const createGradientMakerApp = () => {
     renderColorStops();
     cleanupStopDragIndicators();
     scheduleRender();
+    pushHistory(state);
   });
 
   refs.stopList.addEventListener("dragend", () => {
@@ -2082,6 +2251,7 @@ const createGradientMakerApp = () => {
     state.activePreset = "";
     renderColorStops();
     scheduleRender();
+    pushHistory(state);
   });
 
   refs.glowList.addEventListener("click", (event) => {
@@ -2102,6 +2272,7 @@ const createGradientMakerApp = () => {
       }
       renderGlowList();
       scheduleRender();
+      pushHistory(state);
       return;
     }
 
@@ -2122,6 +2293,7 @@ const createGradientMakerApp = () => {
     state.effects.glow.enabled = true;
     renderGlowList();
     scheduleRender();
+    pushHistory(state);
 
     const editButton = refs.glowList.querySelector(`[data-glow-id="${spot.id}"] [data-glow-edit]`);
     if (editButton) {
@@ -2142,6 +2314,7 @@ const createGradientMakerApp = () => {
       state.activePreset = "";
       renderEffects();
       scheduleRender();
+      pushHistory(state);
     }
   });
 
@@ -2161,6 +2334,7 @@ const createGradientMakerApp = () => {
       }
 
       scheduleRender();
+      pushHistory(state);
     }
   });
 
@@ -2193,6 +2367,7 @@ const createGradientMakerApp = () => {
     refs.customWidthInput.value = String(state.width);
     refs.customHeightInput.value = String(state.height);
     scheduleRender();
+    pushHistory(state);
   };
 
   refs.customWidthInput.addEventListener("input", () => {
@@ -2242,7 +2417,82 @@ const createGradientMakerApp = () => {
     applyButtonFeedback(refs.copyCssBtn, "Copied ✓");
   });
 
+  refs.undoBtn?.addEventListener("click", undo);
+  refs.redoBtn?.addEventListener("click", redo);
+
+  refs.saveCurrentBtn?.addEventListener("click", async () => {
+    if (savedGradients.length >= SAVED_GRADIENTS_MAX) {
+      showMakerToast("Session limit reached (12). Remove a saved gradient to save a new one.");
+      return;
+    }
+
+    const snapshot = getConfigSnapshot(state);
+    const name = `Gradient ${savedGradientNameCounter += 1}`;
+    const thumbnail = await createSavedGradientThumbnail(snapshot);
+
+    if (savedGradients.length >= SAVED_GRADIENTS_MAX) {
+      showMakerToast("Session limit reached (12). Remove a saved gradient to save a new one.");
+      return;
+    }
+
+    savedGradients.push({
+      name,
+      config: snapshot,
+      thumbnail
+    });
+    renderSavedGradients();
+  });
+
+  refs.savedGrid?.addEventListener("click", (event) => {
+    const loadButton = event.target.closest("[data-saved-load]");
+    if (loadButton) {
+      const saved = savedGradients[Number(loadButton.dataset.savedLoad)];
+      if (saved) {
+        loadConfig(saved.config, { pushToHistory: true });
+      }
+      return;
+    }
+
+    const deleteButton = event.target.closest("[data-saved-delete]");
+    if (deleteButton) {
+      const deleteIndex = Number(deleteButton.dataset.savedDelete);
+      if (Number.isInteger(deleteIndex)) {
+        savedGradients.splice(deleteIndex, 1);
+        renderSavedGradients();
+      }
+    }
+  });
+
+  const handleHistoryShortcuts = (event) => {
+    const activeElement = document.activeElement;
+    if (activeElement?.matches("input, textarea")) {
+      return;
+    }
+
+    if (!(event.ctrlKey || event.metaKey)) {
+      return;
+    }
+
+    const key = event.key.toLowerCase();
+    if (key === "z" && !event.shiftKey) {
+      event.preventDefault();
+      undo();
+      return;
+    }
+
+    if ((key === "z" && event.shiftKey) || key === "y") {
+      event.preventDefault();
+      redo();
+    }
+  };
+
+  document.addEventListener("keydown", handleHistoryShortcuts);
+  keyboardCleanup = () => {
+    document.removeEventListener("keydown", handleHistoryShortcuts);
+  };
+
   renderAllControls();
+  pushHistory(state);
   scheduleRender();
 
   return {
@@ -2250,6 +2500,7 @@ const createGradientMakerApp = () => {
       if (dragCleanup) {
         dragCleanup();
       }
+      keyboardCleanup?.();
     }
   };
 };

@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Syne:wght@500;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="style.css?v=maker-ui-5" />
+  <link rel="stylesheet" href="style.css?v=maker-ui-6" />
 </head>
 <body data-page="gradient-maker">
   <div class="mesh" aria-hidden="true"></div>
@@ -41,6 +41,23 @@
     <section class="section" style="padding-top: 2.2rem;">
       <div class="maker-stack">
         <div class="maker-preview reveal">
+          <div class="maker-history-bar" aria-label="History controls">
+            <div class="maker-history-actions">
+              <button class="history-btn" id="undoGradientBtn" type="button" aria-label="Undo">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                  <path d="M3 7v6h6"></path>
+                  <path d="M3 13C5.6 7.6 12 5 17 7.4A9 9 0 0 1 21 15"></path>
+                </svg>
+              </button>
+              <button class="history-btn" id="redoGradientBtn" type="button" aria-label="Redo">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                  <path d="M21 7v6h-6"></path>
+                  <path d="M21 13C18.4 7.6 12 5 7 7.4A9 9 0 0 0 3 15"></path>
+                </svg>
+              </button>
+            </div>
+            <span class="history-step-label" id="historyStepLabel">Step 0 of 0</span>
+          </div>
           <div class="canvas-wrap">
             <canvas id="gradientCanvas" width="1920" height="1080" aria-label="Gradient wallpaper preview"></canvas>
           </div>
@@ -101,6 +118,14 @@
                 <span class="panel-label">Randomize</span>
               </div>
               <button class="btn-ghost maker-inline-btn" id="randomizeGradientBtn" type="button">Randomize ↝</button>
+              <button class="btn-ghost maker-inline-btn maker-save-btn" id="saveCurrentGradientBtn" type="button">Save Current ↓</button>
+            </section>
+
+            <section class="panel-section" data-advanced-section>
+              <div class="panel-head">
+                <span class="panel-label">Saved This Session</span>
+              </div>
+              <div class="saved-grid" id="savedGradientsGrid"></div>
             </section>
           </div>
 
@@ -159,6 +184,6 @@
   </footer>
 
   <script src="script.js"></script>
-  <script src="gradient-maker.js?v=maker-ui-5"></script>
+  <script src="gradient-maker.js?v=maker-ui-6"></script>
 </body>
 </html>
