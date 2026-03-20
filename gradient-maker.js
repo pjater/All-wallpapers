@@ -219,11 +219,29 @@ const hslToHex = (h, s, l) => {
   return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
 };
 
+const normalizeHexColor = (value, fallback = "#FFFFFF") => {
+  const source = String(value || "").trim().replace("#", "");
+
+  if (source.length === 3 && /^[0-9a-fA-F]{3}$/.test(source)) {
+    return `#${source
+      .split("")
+      .map((part) => `${part}${part}`)
+      .join("")
+      .toUpperCase()}`;
+  }
+
+  if (source.length === 6 && /^[0-9a-fA-F]{6}$/.test(source)) {
+    return `#${source.toUpperCase()}`;
+  }
+
+  return fallback.toUpperCase();
+};
+
 const randomPleasingColor = (baseHue = randomInt(0, 359), hueShift = randomInt(-36, 36)) =>
   hslToHex(baseHue + hueShift, randomInt(60, 90), randomInt(40, 65));
 
 const hexToRgb = (hex) => {
-  const normalized = hex.replace("#", "");
+  const normalized = normalizeHexColor(hex).replace("#", "");
   const chunk = normalized.length === 3 ? normalized.split("").map((part) => `${part}${part}`).join("") : normalized;
   const value = Number.parseInt(chunk, 16);
   return {
@@ -236,6 +254,80 @@ const hexToRgb = (hex) => {
 const toRgba = (hex, alpha) => {
   const { r, g, b } = hexToRgb(hex);
   return `rgba(${r}, ${g}, ${b}, ${clamp(alpha, 0, 1)})`;
+};
+
+const rgbToHsv = ({ r, g, b }) => {
+  const red = clamp(r, 0, 255) / 255;
+  const green = clamp(g, 0, 255) / 255;
+  const blue = clamp(b, 0, 255) / 255;
+  const max = Math.max(red, green, blue);
+  const min = Math.min(red, green, blue);
+  const delta = max - min;
+  let hue = 0;
+
+  if (delta) {
+    if (max === red) {
+      hue = 60 * (((green - blue) / delta) % 6);
+    } else if (max === green) {
+      hue = 60 * ((blue - red) / delta + 2);
+    } else {
+      hue = 60 * ((red - green) / delta + 4);
+    }
+  }
+
+  return {
+    h: normalizeAngle(hue),
+    s: max === 0 ? 0 : (delta / max) * 100,
+    v: max * 100
+  };
+};
+
+const hexToHsv = (hex) => rgbToHsv(hexToRgb(hex));
+
+const hsvToRgb = (h, s, v) => {
+  const hue = normalizeAngle(h);
+  const saturation = clamp(s, 0, 100) / 100;
+  const value = clamp(v, 0, 100) / 100;
+  const chroma = value * saturation;
+  const sector = hue / 60;
+  const x = chroma * (1 - Math.abs((sector % 2) - 1));
+  let red = 0;
+  let green = 0;
+  let blue = 0;
+
+  if (sector >= 0 && sector < 1) {
+    red = chroma;
+    green = x;
+  } else if (sector >= 1 && sector < 2) {
+    red = x;
+    green = chroma;
+  } else if (sector >= 2 && sector < 3) {
+    green = chroma;
+    blue = x;
+  } else if (sector >= 3 && sector < 4) {
+    green = x;
+    blue = chroma;
+  } else if (sector >= 4 && sector < 5) {
+    red = x;
+    blue = chroma;
+  } else {
+    red = chroma;
+    blue = x;
+  }
+
+  const match = value - chroma;
+
+  return {
+    r: Math.round((red + match) * 255),
+    g: Math.round((green + match) * 255),
+    b: Math.round((blue + match) * 255)
+  };
+};
+
+const hsvToHex = (h, s, v) => {
+  const { r, g, b } = hsvToRgb(h, s, v);
+  const toHex = (channel) => channel.toString(16).padStart(2, "0").toUpperCase();
+  return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
 };
 
 const getRadialPosition = (config) => {
@@ -774,6 +866,7 @@ const createGradientMakerApp = () => {
   let isSettingsExpanded = false;
   let dragCleanup = null;
   let activeGlowPopup = null;
+  let activeColorPopover = null;
   let draggedStopId = "";
   const baseMakerPanelPaddingBottom = refs.makerPanel
     ? Number.parseFloat(window.getComputedStyle(refs.makerPanel).paddingBottom) || 0
@@ -842,6 +935,8 @@ const createGradientMakerApp = () => {
   };
 
   const renderColorStops = () => {
+    closeColorPopover();
+
     refs.stopList.innerHTML = state.stops
       .map(
         (stop, index) => `
@@ -863,9 +958,15 @@ const createGradientMakerApp = () => {
                 <circle cx="15" cy="19" r="1"></circle>
               </svg>
             </button>
-            <label class="stop-color-shell" title="Pick color for stop ${index + 1}">
-              <input class="stop-color" type="color" value="${stop.color}" aria-label="Color stop ${index + 1}" data-stop-color />
-            </label>
+            <button
+              class="stop-color-shell"
+              type="button"
+              data-stop-color-trigger
+              aria-label="Pick color for stop ${index + 1}"
+              title="${normalizeHexColor(stop.color)}"
+            >
+              <span class="maker-color-fill" data-color-fill style="background: ${normalizeHexColor(stop.color)};"></span>
+            </button>
             <div class="stop-range-wrap">
               <div class="stop-range-label">
                 <span>Position</span>
@@ -934,6 +1035,222 @@ const createGradientMakerApp = () => {
 
   const getGlowSpotById = (spotId) => state.effects.glow.spots.find((spot) => spot.id === spotId);
 
+  const updateColorTriggerValue = (trigger, color) => {
+    if (!trigger) {
+      return;
+    }
+
+    const normalized = normalizeHexColor(color);
+    const fill = trigger.querySelector("[data-color-fill]");
+    const code = trigger.querySelector("[data-color-code]");
+
+    trigger.dataset.colorValue = normalized;
+    trigger.title = normalized;
+
+    if (fill) {
+      fill.style.background = normalized;
+    }
+
+    if (code) {
+      code.textContent = normalized;
+    }
+  };
+
+  const positionColorPopover = (popover, anchor) => {
+    if (!popover || !anchor) {
+      return;
+    }
+
+    const anchorRect = anchor.getBoundingClientRect();
+    const popoverRect = popover.getBoundingClientRect();
+    const gap = 12;
+    const left = clamp(
+      anchorRect.left + anchorRect.width / 2 - popoverRect.width / 2,
+      16,
+      Math.max(16, window.innerWidth - popoverRect.width - 16)
+    );
+    const preferredTop = anchorRect.bottom + gap;
+    const fallbackTop = anchorRect.top - popoverRect.height - gap;
+    const top =
+      preferredTop + popoverRect.height <= window.innerHeight - 16
+        ? preferredTop
+        : Math.max(16, fallbackTop);
+
+    popover.style.left = `${left}px`;
+    popover.style.top = `${top}px`;
+  };
+
+  const closeColorPopover = () => {
+    if (!activeColorPopover) {
+      return;
+    }
+
+    const { element, cleanup } = activeColorPopover;
+    cleanup?.();
+    activeColorPopover = null;
+    element.classList.remove("is-visible");
+    setTimeout(() => element.remove(), 180);
+  };
+
+  const openColorPopover = ({ anchor, color, onChange }) => {
+    if (!anchor || typeof onChange !== "function") {
+      return;
+    }
+
+    closeColorPopover();
+
+    const initialColor = normalizeHexColor(color);
+    const pickerState = hexToHsv(initialColor);
+    const popover = document.createElement("div");
+    popover.className = "maker-color-picker";
+    popover.innerHTML = `
+      <div class="maker-color-picker-inner">
+        <div class="maker-color-picker-head">
+          <div>
+            <span class="popup-label">Custom Color</span>
+            <strong class="maker-color-picker-code">${initialColor}</strong>
+          </div>
+          <span class="maker-color-picker-preview" aria-hidden="true"></span>
+        </div>
+        <div class="maker-color-surface" tabindex="0" aria-label="Choose saturation and brightness">
+          <span class="maker-color-surface-knob" aria-hidden="true"></span>
+        </div>
+        <div class="maker-color-slider-wrap">
+          <div class="maker-color-slider-head">
+            <span>Hue</span>
+            <span class="maker-color-hue-value">${Math.round(pickerState.h)}°</span>
+          </div>
+          <input class="maker-color-hue" type="range" min="0" max="360" step="1" value="${Math.round(pickerState.h)}" />
+        </div>
+        <label class="maker-field maker-color-hex-field">
+          <span>Hex</span>
+          <input class="maker-color-hex-input" type="text" value="${initialColor}" maxlength="7" spellcheck="false" />
+        </label>
+        <button class="btn-ghost maker-color-done" type="button">Done</button>
+      </div>
+    `;
+
+    document.body.appendChild(popover);
+
+    const surface = popover.querySelector(".maker-color-surface");
+    const knob = popover.querySelector(".maker-color-surface-knob");
+    const preview = popover.querySelector(".maker-color-picker-preview");
+    const code = popover.querySelector(".maker-color-picker-code");
+    const hueValue = popover.querySelector(".maker-color-hue-value");
+    const hueInput = popover.querySelector(".maker-color-hue");
+    const hexInput = popover.querySelector(".maker-color-hex-input");
+    const doneButton = popover.querySelector(".maker-color-done");
+
+    const applyColor = () => {
+      const nextColor = hsvToHex(pickerState.h, pickerState.s, pickerState.v);
+      const currentHue = Math.round(pickerState.h);
+
+      surface.style.backgroundColor = `hsl(${currentHue} 100% 50%)`;
+      knob.style.left = `${pickerState.s}%`;
+      knob.style.top = `${100 - pickerState.v}%`;
+      preview.style.background = nextColor;
+      code.textContent = nextColor;
+      hueValue.textContent = `${currentHue}°`;
+      hueInput.value = String(currentHue);
+      hexInput.value = nextColor;
+      onChange(nextColor);
+    };
+
+    const updateFromSurface = (clientX, clientY) => {
+      const rect = surface.getBoundingClientRect();
+      pickerState.s = clamp(((clientX - rect.left) / rect.width) * 100, 0, 100);
+      pickerState.v = clamp(100 - ((clientY - rect.top) / rect.height) * 100, 0, 100);
+      applyColor();
+    };
+
+    const handleOutsideClick = (event) => {
+      if (popover.contains(event.target) || anchor.contains(event.target)) {
+        return;
+      }
+      closeColorPopover();
+    };
+
+    const handleEscape = (event) => {
+      if (event.key === "Escape") {
+        closeColorPopover();
+      }
+    };
+
+    const handleViewportChange = () => {
+      if (!document.body.contains(anchor)) {
+        closeColorPopover();
+        return;
+      }
+
+      positionColorPopover(popover, anchor);
+    };
+
+    document.addEventListener("mousedown", handleOutsideClick);
+    document.addEventListener("keydown", handleEscape);
+    window.addEventListener("resize", handleViewportChange);
+    window.addEventListener("scroll", handleViewportChange, true);
+
+    activeColorPopover = {
+      element: popover,
+      anchor,
+      cleanup: () => {
+        document.removeEventListener("mousedown", handleOutsideClick);
+        document.removeEventListener("keydown", handleEscape);
+        window.removeEventListener("resize", handleViewportChange);
+        window.removeEventListener("scroll", handleViewportChange, true);
+      }
+    };
+
+    surface.addEventListener("pointerdown", (event) => {
+      event.preventDefault();
+      updateFromSurface(event.clientX, event.clientY);
+
+      const handleMove = (moveEvent) => updateFromSurface(moveEvent.clientX, moveEvent.clientY);
+      const handleUp = () => {
+        window.removeEventListener("pointermove", handleMove);
+        window.removeEventListener("pointerup", handleUp);
+      };
+
+      window.addEventListener("pointermove", handleMove);
+      window.addEventListener("pointerup", handleUp);
+    });
+
+    hueInput.addEventListener("input", () => {
+      pickerState.h = clamp(Number(hueInput.value) || 0, 0, 360);
+      applyColor();
+    });
+
+    hexInput.addEventListener("input", () => {
+      const sanitized = hexInput.value.replace(/[^#0-9a-fA-F]/g, "");
+      const normalized =
+        sanitized.replace("#", "").length === 3 || sanitized.replace("#", "").length === 6
+          ? normalizeHexColor(sanitized, code.textContent)
+          : "";
+
+      if (!normalized) {
+        return;
+      }
+
+      const nextColor = hexToHsv(normalized);
+      pickerState.h = nextColor.h;
+      pickerState.s = nextColor.s;
+      pickerState.v = nextColor.v;
+      applyColor();
+    });
+
+    hexInput.addEventListener("blur", () => {
+      hexInput.value = code.textContent;
+    });
+
+    doneButton.addEventListener("click", closeColorPopover);
+
+    requestAnimationFrame(() => {
+      applyColor();
+      positionColorPopover(popover, anchor);
+      popover.classList.add("is-visible");
+    });
+  };
+
   const resetMakerPanelClearance = () => {
     if (!refs.makerPanel) {
       return;
@@ -957,6 +1274,8 @@ const createGradientMakerApp = () => {
   };
 
   const closeGlowPopup = () => {
+    closeColorPopover();
+
     if (!activeGlowPopup) {
       resetMakerPanelClearance();
       return;
@@ -975,6 +1294,7 @@ const createGradientMakerApp = () => {
       return;
     }
 
+    closeColorPopover();
     refs.makerPanel.classList.toggle("is-collapsed", !isSettingsExpanded);
     refs.toggleSettingsBtn.classList.toggle("is-expanded", isSettingsExpanded);
     refs.toggleSettingsBtn.setAttribute("aria-expanded", isSettingsExpanded ? "true" : "false");
@@ -1000,7 +1320,7 @@ const createGradientMakerApp = () => {
     activeGlowPopup.yValue.textContent = `Y: ${spot.y}%`;
     activeGlowPopup.opacityValue.textContent = `${spot.opacity}%`;
     activeGlowPopup.featherValue.textContent = `${spot.feather}%`;
-    activeGlowPopup.colorInput.value = spot.color;
+    updateColorTriggerValue(activeGlowPopup.colorTrigger, spot.color);
     activeGlowPopup.opacityInput.value = String(spot.opacity);
     activeGlowPopup.featherInput.value = String(spot.feather);
     activeGlowPopup.shapeButtons.forEach((button) => {
@@ -1072,9 +1392,11 @@ const createGradientMakerApp = () => {
       <div class="glow-popup-inner">
         <div>
           <span class="popup-label">Color</span>
-          <label class="popup-color-shell">
-            <input class="popup-color-input" type="color" value="${spot.color}" />
-          </label>
+          <button class="popup-color-shell" type="button" data-popup-color-trigger aria-label="Pick glow spot color">
+            <span class="maker-color-fill" data-color-fill style="background: ${normalizeHexColor(spot.color)};"></span>
+            <span class="maker-color-code" data-color-code>${normalizeHexColor(spot.color)}</span>
+            <span class="maker-color-caret" aria-hidden="true"></span>
+          </button>
         </div>
         <div>
           <span class="popup-label">Shape</span>
@@ -1119,7 +1441,7 @@ const createGradientMakerApp = () => {
 
     refs.makerPanel.appendChild(popup);
 
-    const colorInput = popup.querySelector(".popup-color-input");
+    const colorTrigger = popup.querySelector("[data-popup-color-trigger]");
     const shapeButtons = Array.from(popup.querySelectorAll(".popup-shape-btn"));
     const monitor = popup.querySelector(".mini-monitor");
     const previewCanvas = popup.querySelector(".mini-monitor-canvas");
@@ -1146,7 +1468,7 @@ const createGradientMakerApp = () => {
     syncMakerPanelClearance(popup);
 
     const handleOutsideClick = (event) => {
-      if (popup.contains(event.target) || event.target.closest("[data-glow-edit]")) {
+      if (popup.contains(event.target) || event.target.closest("[data-glow-edit]") || event.target.closest(".maker-color-picker")) {
         return;
       }
       closeGlowPopup();
@@ -1167,7 +1489,7 @@ const createGradientMakerApp = () => {
       previewCanvas,
       monitor,
       handlesLayer,
-      colorInput,
+      colorTrigger,
       shapeButtons,
       xValue,
       yValue,
@@ -1196,9 +1518,15 @@ const createGradientMakerApp = () => {
       scheduleRender();
     };
 
-    colorInput.addEventListener("input", () => {
-      syncCurrentSpot((currentSpot) => {
-        currentSpot.color = colorInput.value;
+    colorTrigger.addEventListener("click", () => {
+      openColorPopover({
+        anchor: colorTrigger,
+        color: spot.color,
+        onChange: (nextColor) => {
+          syncCurrentSpot((currentSpot) => {
+            currentSpot.color = normalizeHexColor(nextColor);
+          });
+        }
       });
     });
 
@@ -1637,10 +1965,6 @@ const createGradientMakerApp = () => {
       return;
     }
 
-    if (event.target.matches("[data-stop-color]")) {
-      stop.color = event.target.value;
-    }
-
     if (event.target.matches("[data-stop-pos]")) {
       stop.pos = clamp(Number(event.target.value) || 0, 0, 100);
       const label = row.querySelector(".stop-pos-value");
@@ -1654,6 +1978,27 @@ const createGradientMakerApp = () => {
   });
 
   refs.stopList.addEventListener("click", (event) => {
+    const colorTrigger = event.target.closest("[data-stop-color-trigger]");
+    if (colorTrigger) {
+      const row = colorTrigger.closest(".color-stop-row");
+      const stop = state.stops.find((item) => item.id === row?.dataset.stopId);
+      if (!stop) {
+        return;
+      }
+
+      openColorPopover({
+        anchor: colorTrigger,
+        color: stop.color,
+        onChange: (nextColor) => {
+          stop.color = normalizeHexColor(nextColor);
+          updateColorTriggerValue(colorTrigger, stop.color);
+          state.activePreset = "";
+          scheduleRender();
+        }
+      });
+      return;
+    }
+
     const button = event.target.closest("[data-stop-delete]");
     if (!button || state.stops.length <= 2) {
       return;
