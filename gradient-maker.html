@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Design a custom gradient wallpaper and download it at any resolution." />
+  <meta property="og:title" content="All Wallpapers | Gradient Maker" />
+  <meta property="og:description" content="Create a custom gradient wallpaper with presets, effects, and export controls." />
+  <meta property="og:type" content="website" />
+  <title>All Wallpapers | Maker</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Syne:wght@500;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body data-page="gradient-maker">
+  <div class="mesh" aria-hidden="true"></div>
+
+  <header class="site-nav" id="siteNav">
+    <div class="nav-shell">
+      <a class="brand" href="index.html">All <strong>Wallpapers</strong></a>
+      <nav class="nav-links" aria-label="Main navigation">
+        <a class="nav-link" data-nav="home" href="index.html">Home</a>
+        <a class="nav-link" data-nav="wallpapers" href="wallpapers.html">Wallpapers</a>
+        <a class="nav-link" data-nav="collections" href="collections.html">Collections</a>
+        <a class="nav-link" data-nav="setup" href="setup.html">Setup</a>
+        <a class="nav-link" data-nav="gradient-maker" href="gradient-maker.html">Maker</a>
+        <a class="nav-link" data-nav="about" href="about.html">About</a>
+      </nav>
+      <a class="btn" href="index.html">Back To Home</a>
+    </div>
+  </header>
+
+  <main>
+    <section class="page-hero reveal">
+      <span class="eyebrow">Creative Tool</span>
+      <h1>Make your own wallpaper.</h1>
+      <p>Design a custom gradient wallpaper and download it at any resolution.</p>
+    </section>
+
+    <section class="section" style="padding-top: 2.2rem;">
+      <div class="maker-layout">
+        <div class="maker-preview reveal">
+          <div class="canvas-wrap">
+            <canvas id="gradientCanvas" width="1920" height="1080" aria-label="Gradient wallpaper preview"></canvas>
+          </div>
+          <p class="canvas-meta" id="canvasMeta">1920 × 1080 · 16:9</p>
+        </div>
+
+        <div class="maker-sidebar">
+          <div class="maker-panel reveal delay-1">
+            <section class="panel-section">
+              <div class="panel-head">
+                <span class="panel-label">Gradient Type</span>
+              </div>
+              <div class="maker-pill-row" id="gradientTypeRow"></div>
+            </section>
+
+            <section class="panel-section">
+              <div class="panel-head">
+                <span class="panel-label">Color Stops</span>
+              </div>
+              <div class="stop-list" id="colorStopsList"></div>
+              <button class="btn-ghost maker-inline-btn" id="addColorStopBtn" type="button">Add Color Stop</button>
+            </section>
+
+            <section class="panel-section" id="directionPanel">
+              <div class="panel-head">
+                <span class="panel-label">Direction / Angle</span>
+              </div>
+              <div id="directionControls"></div>
+            </section>
+
+            <section class="panel-section">
+              <div class="panel-head">
+                <span class="panel-label">Effects</span>
+              </div>
+              <div class="effects-stack" id="effectsStack"></div>
+            </section>
+
+            <section class="panel-section">
+              <div class="panel-head">
+                <span class="panel-label">Presets</span>
+              </div>
+              <div class="preset-row" id="presetRow"></div>
+            </section>
+
+            <section class="panel-section">
+              <div class="panel-head">
+                <span class="panel-label">Randomize</span>
+              </div>
+              <button class="btn-ghost maker-inline-btn" id="randomizeGradientBtn" type="button">Randomize ↝</button>
+            </section>
+          </div>
+
+          <div class="maker-export reveal delay-2">
+            <div class="panel-head">
+              <span class="panel-label">Export / Download</span>
+            </div>
+            <div class="maker-pill-row maker-resolution-row" id="resolutionRow"></div>
+            <div class="custom-resolution-fields" id="customResolutionFields" hidden>
+              <label class="maker-field">
+                <span>Width</span>
+                <input id="customWidthInput" type="number" min="320" max="7680" step="1" value="1920" />
+              </label>
+              <label class="maker-field">
+                <span>Height</span>
+                <input id="customHeightInput" type="number" min="320" max="4320" step="1" value="1080" />
+              </label>
+            </div>
+            <button class="btn maker-download-btn" id="downloadGradientBtn" type="button">Download Wallpaper</button>
+            <button class="btn-ghost maker-copy-btn" id="copyCssBtn" type="button">Copy CSS</button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="footer-grid">
+      <div class="footer-column footer-brand-block">
+        <a class="brand footer-brand" href="index.html">All <strong>Wallpapers</strong></a>
+        <p class="footer-tagline">A curated visual library for every setup.</p>
+        <p class="footer-copy">Copyright <span id="year"></span> All Wallpapers</p>
+      </div>
+      <div class="footer-column">
+        <h2 class="footer-heading">Navigate</h2>
+        <div class="footer-links">
+          <a class="footer-link" href="index.html">Home</a>
+          <a class="footer-link" href="wallpapers.html">Wallpapers</a>
+          <a class="footer-link" href="collections.html">Collections</a>
+          <a class="footer-link" href="setup.html">Setup</a>
+          <a class="footer-link" href="gradient-maker.html">Maker</a>
+          <a class="footer-link" href="about.html">About</a>
+        </div>
+      </div>
+      <div class="footer-column">
+        <h2 class="footer-heading">Browse</h2>
+        <div class="footer-links">
+          <a class="footer-link" href="wallpapers.html?category=Space">Space</a>
+          <a class="footer-link" href="wallpapers.html?category=Nature">Nature</a>
+          <a class="footer-link" href="wallpapers.html?category=Urban">Urban</a>
+          <a class="footer-link" href="wallpapers.html?category=Cinematic">Cinematic</a>
+          <a class="footer-link" href="wallpapers.html?category=Abstract">Abstract</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+  <script src="gradient-maker.js"></script>
+</body>
+</html>
