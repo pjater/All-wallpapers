@@ -1743,7 +1743,7 @@ main {
 
 .maker-layout {
   display: grid;
-  grid-template-columns: 1fr 380px;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 380px);
   gap: 2rem;
   align-items: start;
 }
@@ -1756,6 +1756,7 @@ main {
 .maker-sidebar {
   display: grid;
   gap: 1rem;
+  width: 100%;
 }
 
 .canvas-wrap {
@@ -1785,12 +1786,25 @@ main {
 
 .maker-panel,
 .maker-export {
+  width: 100%;
+  max-width: 100%;
   background: var(--glass);
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-xl);
   padding: 1.5rem;
   box-shadow: var(--shadow-1);
   backdrop-filter: blur(12px);
+}
+
+.panel-section,
+.stop-row,
+.stop-range-wrap,
+.angle-controls,
+.effect-card,
+.glow-spot-card,
+.maker-field,
+.maker-select-wrap {
+  min-width: 0;
 }
 
 .panel-section + .panel-section {
@@ -2662,10 +2676,14 @@ footer {
   }
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1280px) {
   .maker-layout {
     grid-template-columns: 1fr;
     gap: 1.25rem;
+  }
+
+  .maker-sidebar {
+    max-width: 100%;
   }
 
   .maker-panel,
