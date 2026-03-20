@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="View a wallpaper in detail and download it directly." />
+  <meta property="og:title" content="All Wallpapers | Detail" />
+  <meta property="og:description" content="Open a wallpaper detail view with related picks and full-screen preview." />
+  <meta property="og:type" content="website" />
+  <title>All Wallpapers | Detail</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Syne:wght@500;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body data-page="detail">
+  <div class="mesh" aria-hidden="true"></div>
+
+  <header class="site-nav" id="siteNav">
+    <div class="nav-shell">
+      <a class="brand" href="index.html">All <strong>Wallpapers</strong></a>
+      <nav class="nav-links" aria-label="Main navigation">
+        <a class="nav-link" data-nav="home" href="index.html">Home</a>
+        <a class="nav-link" data-nav="wallpapers" href="wallpapers.html">Wallpapers</a>
+        <a class="nav-link" data-nav="collections" href="collections.html">Collections</a>
+        <a class="nav-link" data-nav="setup" href="setup.html">Setup</a>
+        <a class="nav-link" data-nav="about" href="about.html">About</a>
+      </nav>
+      <a class="btn" href="wallpapers.html">Back To Collection</a>
+    </div>
+  </header>
+
+  <main class="detail-main" id="detailMount"></main>
+
+  <footer>
+    <span>Copyright <span id="year"></span> All Wallpapers</span>
+    <span>Preview, fullscreen, and direct download</span>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>

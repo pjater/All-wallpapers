@@ -1,4 +1,4 @@
-﻿const allWallpaperFiles = [
+const allWallpaperFiles = [
   "6073083.jpg",
   "Autumn Veil.png",
   "Azure Nebula.png",
@@ -64,6 +64,102 @@ const featuredWallpaperFiles = [
   "Volcanic Shore.png"
 ];
 
+const collections = [
+  {
+    id: "dark-minimal",
+    label: "Dark & Minimal",
+    description: "Clean setups with deep contrast and no noise.",
+    cover: "Dark Interface.png",
+    files: ["Black Monolith.png", "Dark Interface.png", "Deep Void.png", "Shadow Vortex.png", "Dark Forest.png", "Silent Stars.png"]
+  },
+  {
+    id: "nature-escapes",
+    label: "Nature Escapes",
+    description: "Organic textures and landscapes for a calming desktop.",
+    cover: "Luminous Woods.png",
+    files: [
+      "Luminous Woods.png",
+      "Luminous Woods (dim).png",
+      "Poppy Field.png",
+      "Frozen Cliffs.png",
+      "Volcanic Shore.png",
+      "Snowbound.png",
+      "Winter Silence.png",
+      "Dark Forest.png",
+      "Autumn Veil.png"
+    ]
+  },
+  {
+    id: "neon-cyber",
+    label: "Neon & Cyber",
+    description: "Electric tones and glowing geometries for bold setups.",
+    cover: "purple neon fluid.png",
+    files: ["purple neon fluid.png", "neon lines.jpg", "Blue Giant.png", "blue pipes.png", "Galactic Blue.png", "bold fest.png"]
+  },
+  {
+    id: "space-deep",
+    label: "Deep Space",
+    description: "Nebulae, voids, and cosmic light for the explorer.",
+    cover: "Azure Nebula.png",
+    files: ["Azure Nebula.png", "Cosmic Snow.png", "Crimson Nebula.png", "Deep Void.png", "Dwarf Light.png", "Event Horizon.png", "Galactic Blue.png", "Silent Stars.png", "White Nebula.png"]
+  },
+  {
+    id: "warm-tones",
+    label: "Warm Tones",
+    description: "Red, amber, and earthy palettes for a grounded feel.",
+    cover: "Red Horizon.png",
+    files: ["Red Horizon.png", "Red Orbit.png", "Red Shards.png", "Scarlet Surges.png", "Crimson Smoke.png", "Dust Storm.png", "Poppy Field.png"]
+  },
+  {
+    id: "clean-light",
+    label: "Clean & Light",
+    description: "Minimal whites and soft textures for distraction-free work.",
+    cover: "White Silk.png",
+    files: ["White Silk.png", "White Dunes.png", "White Nebula.png", "Snowbound.png", "Ethereal Fog.png"]
+  }
+];
+
+const setupMap = {
+  dark: ["Black Monolith.png", "Dark Interface.png", "Deep Void.png", "Shadow Vortex.png", "Event Horizon.png", "Silent Stars.png", "Night Peaks.png"],
+  colorful: ["purple neon fluid.png", "neon lines.jpg", "Blue Giant.png", "Galactic Blue.png", "bold fest.png", "Azure Nebula.png", "Crimson Nebula.png"],
+  calm: ["Luminous Woods.png", "Poppy Field.png", "Frozen Cliffs.png", "Snowbound.png", "Winter Silence.png", "Ethereal Fog.png", "White Dunes.png"],
+  minimal: ["White Silk.png", "White Nebula.png", "Clean Geometry.png", "Dust Storm.png", "White Dunes.png", "Snowbound.png"]
+};
+
+const setupVibes = [
+  {
+    id: "dark",
+    label: "Dark & Focused",
+    description: "Low-noise scenes and deep contrast for locked-in sessions.",
+    cover: "Dark Interface.png"
+  },
+  {
+    id: "colorful",
+    label: "Colorful & Bold",
+    description: "Electric tones and high-energy forms that keep the setup alive.",
+    cover: "purple neon fluid.png"
+  },
+  {
+    id: "calm",
+    label: "Calm & Natural",
+    description: "Landscapes and organic textures that keep the desktop quiet.",
+    cover: "Luminous Woods.png"
+  },
+  {
+    id: "minimal",
+    label: "Minimal & Clean",
+    description: "Soft light, simple geometry, and distraction-free surfaces.",
+    cover: "White Silk.png"
+  }
+];
+
+const setupMonitorOptions = [
+  { id: "standard", label: "16:9 Standard" },
+  { id: "ultrawide", label: "21:9 Ultrawide" },
+  { id: "dual", label: "Dual Monitor" },
+  { id: "portrait", label: "Portrait / Mobile" }
+];
+
 const categoryRules = [
   { match: /nebula|stars|void|horizon|galactic|orbit|cosmic|dwarf|event|sky/i, label: "Space" },
   { match: /forest|woods|shore|snow|cliffs|dunes|waves|autumn|winter|poppy|sea/i, label: "Nature" },
@@ -88,17 +184,19 @@ let sortDropdownApi = null;
 let contextMenuRef = null;
 let recentSearches = [];
 let lastVisibleCount = 0;
+let wallpaperBrowseFiles = allWallpaperFiles.slice();
+let wallpaperBrowseContext = null;
 let lightboxState = {
   sourceGrid: null,
   file: ""
 };
 
 const escapeHtml = (str) =>
-  str
+  String(str)
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
-    .replace(/\"/g, "&quot;")
+    .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
 
 const toTitle = (file) => {
@@ -116,6 +214,93 @@ const inferCategory = (file) => {
 };
 
 const encodeFilePath = (file) => `wallpapers/${encodeURIComponent(file).replace(/%2F/g, "/")}`;
+
+const normalizeFileList = (files) => {
+  const seen = new Set();
+  return files.filter((file) => {
+    if (!allWallpaperFiles.includes(file) || seen.has(file)) {
+      return false;
+    }
+
+    seen.add(file);
+    return true;
+  });
+};
+
+const shuffleArray = (items) => {
+  const clone = items.slice();
+  for (let index = clone.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [clone[index], clone[swapIndex]] = [clone[swapIndex], clone[index]];
+  }
+  return clone;
+};
+
+const getFileExtension = (file) => {
+  const match = file.match(/\.([^.]+)$/);
+  return match ? match[1].toUpperCase() : "PNG";
+};
+
+const getWallpaperBrowseState = () => {
+  const params = new URLSearchParams(window.location.search);
+  const collectionFilesParam = params.get("collection-files");
+
+  if (collectionFilesParam !== null) {
+    const files = normalizeFileList(
+      collectionFilesParam
+        .split(",")
+        .map((item) => item.trim())
+        .filter(Boolean)
+    );
+
+    return {
+      files,
+      context: {
+        type: "setup",
+        label: "Your Setup Picks",
+        description: "A focused wallpaper set based on the vibe and monitor profile you chose.",
+        backLabel: "← Back to Setup",
+        backHref: "setup.html"
+      }
+    };
+  }
+
+  const collectionId = params.get("collection");
+  if (collectionId) {
+    const collection = collections.find((item) => item.id === collectionId);
+    if (collection) {
+      return {
+        files: normalizeFileList(collection.files),
+        context: {
+          type: "collection",
+          label: collection.label,
+          description: collection.description,
+          backLabel: "← All Collections",
+          backHref: "collections.html"
+        }
+      };
+    }
+  }
+
+  return {
+    files: allWallpaperFiles.slice(),
+    context: null
+  };
+};
+
+const getRelatedWallpaperFiles = (file, count = 4) => {
+  const category = inferCategory(file);
+  const sameCategory = allWallpaperFiles.filter((item) => item !== file && inferCategory(item) === category);
+  if (sameCategory.length >= count) {
+    return sameCategory.slice(0, count);
+  }
+
+  const fallbackPool = shuffleArray(
+    allWallpaperFiles.filter((item) => item !== file && inferCategory(item) !== category && !sameCategory.includes(item))
+  );
+
+  return [...sameCategory, ...fallbackPool].slice(0, count);
+};
 
 const loadFavorites = () => {
   try {
@@ -220,6 +405,7 @@ const createWallpaperCard = (file, index) => {
   const title = toTitle(file);
   const category = inferCategory(file);
   const path = encodeFilePath(file);
+  const detailLink = `detail.html?file=${encodeURIComponent(file)}`;
   const isFavorited = favorites.has(file);
   const sourceIndex = allWallpaperFiles.indexOf(file);
   const isNew = sourceIndex >= allWallpaperFiles.length - 6;
@@ -243,7 +429,9 @@ const createWallpaperCard = (file, index) => {
     </div>
     <div class="card-content">
       <div class="card-top">
-        <h3 class="card-title">${escapeHtml(title)}</h3>
+        <h3 class="card-title">
+          <a class="card-title-link" href="${detailLink}">${escapeHtml(title)}</a>
+        </h3>
         <span class="card-meta" data-category="${escapeHtml(category)}">${escapeHtml(category)}</span>
       </div>
       <div class="card-extra">
@@ -302,6 +490,24 @@ const createWallpaperCard = (file, index) => {
       markUnavailable();
     }
   }
+
+  return card;
+};
+
+const createCollectionCard = (collection, index) => {
+  const delayClass = index % 3 === 1 ? " delay-1" : index % 3 === 2 ? " delay-2" : "";
+  const card = document.createElement("a");
+  card.className = `collection-card reveal${delayClass}`;
+  card.href = `wallpapers.html?collection=${encodeURIComponent(collection.id)}`;
+
+  card.innerHTML = `
+    <img src="${encodeFilePath(collection.cover)}" alt="${escapeHtml(collection.label)}" loading="lazy" decoding="async" />
+    <span class="collection-count">${collection.files.length}</span>
+    <div class="collection-overlay">
+      <h3>${escapeHtml(collection.label)}</h3>
+      <p>${escapeHtml(collection.description)}</p>
+    </div>
+  `;
 
   return card;
 };
@@ -412,8 +618,8 @@ const createLightbox = () => {
   overlay.innerHTML = `
     <div class="lightbox-inner">
       <button class="lightbox-close" type="button" aria-label="Close preview">×</button>
-      <button class="lightbox-nav lightbox-prev" type="button" aria-label="Previous wallpaper">‹</button>
-      <button class="lightbox-nav lightbox-next" type="button" aria-label="Next wallpaper">›</button>
+      <button class="lightbox-nav lightbox-prev" type="button" aria-label="Previous wallpaper" hidden>‹</button>
+      <button class="lightbox-nav lightbox-next" type="button" aria-label="Next wallpaper" hidden>›</button>
       <img class="lightbox-image" alt="Wallpaper preview" />
       <div class="lightbox-meta">
         <div class="lightbox-title"></div>
@@ -488,6 +694,14 @@ const getVisibleAvailableCards = (grid) => {
   );
 };
 
+const syncLightboxNavigation = (lightbox, sourceGrid, file) => {
+  const cards = getVisibleAvailableCards(sourceGrid);
+  const hasCurrentFile = cards.some((card) => card.dataset.file === file);
+  const showNavigation = Boolean(sourceGrid) && hasCurrentFile && cards.length > 1;
+  lightbox.prev.hidden = !showNavigation;
+  lightbox.next.hidden = !showNavigation;
+};
+
 const navigateLightbox = (direction) => {
   if (!lightboxState.sourceGrid) {
     return;
@@ -517,12 +731,14 @@ const navigateLightbox = (direction) => {
   });
 };
 
-const openLightbox = ({ path, title, category, file, sourceGrid }) => {
+const openLightbox = ({ path, title, category, file, sourceGrid = null }) => {
   const lightbox = createLightbox();
   lightboxState = {
-    sourceGrid: sourceGrid || lightboxState.sourceGrid,
+    sourceGrid,
     file
   };
+
+  syncLightboxNavigation(lightbox, sourceGrid, file);
 
   const handleLoadDone = () => {
     lightbox.inner.classList.remove("is-loading");
@@ -607,7 +823,8 @@ const setVisibleCountLabel = (count) => {
   }
 
   const previous = label.dataset.lastCount;
-  label.innerHTML = `Showing <span class="count-number">${count}</span> of ${allWallpaperFiles.length} wallpapers`;
+  const total = wallpaperBrowseFiles.length;
+  label.innerHTML = `Showing <span class="count-number">${count}</span> of ${total} wallpapers`;
   label.dataset.lastCount = String(count);
 
   if (previous !== undefined && previous !== String(count)) {
@@ -771,7 +988,7 @@ const sortCardsInGrid = (grid) => {
     return;
   }
 
-  const defaultIndex = new Map(allWallpaperFiles.map((file, index) => [file, index]));
+  const defaultIndex = new Map(wallpaperBrowseFiles.map((file, index) => [file, index]));
 
   const sorted = cards.sort((a, b) => {
     const aFile = a.dataset.file || "";
@@ -1637,36 +1854,310 @@ const setYear = () => {
   }
 };
 
-const init = () => {
-  favorites = loadFavorites();
-
-  const featuredGrid = document.getElementById("featuredGrid");
-  if (featuredGrid) {
-    renderWallpaperGrid(featuredGrid, featuredWallpaperFiles);
+const updateWallpaperHeroContent = () => {
+  const hero = document.querySelector(".page-hero");
+  if (!hero || !wallpaperBrowseContext) {
+    return;
   }
 
+  const eyebrow = hero.querySelector(".eyebrow");
+  const heading = hero.querySelector("h1");
+  const copy = hero.querySelector("p");
+
+  if (eyebrow) {
+    eyebrow.textContent = wallpaperBrowseContext.type === "setup" ? "Personalized Match" : "Curated Collection";
+  }
+
+  if (heading) {
+    heading.textContent = wallpaperBrowseContext.label;
+  }
+
+  if (copy) {
+    copy.textContent = wallpaperBrowseContext.description;
+  }
+};
+
+const renderWallpaperContextLink = () => {
+  const sticky = document.getElementById("controlsSticky");
+  const bar = document.getElementById("categoryFilters");
+  if (!sticky || !bar) {
+    return;
+  }
+
+  const existing = sticky.querySelector(".wallpaper-context-link");
+  if (!wallpaperBrowseContext) {
+    existing?.remove();
+    return;
+  }
+
+  const link = existing || document.createElement("a");
+  link.className = "wallpaper-context-link";
+  link.href = wallpaperBrowseContext.backHref;
+  link.textContent = wallpaperBrowseContext.backLabel;
+
+  if (!existing) {
+    sticky.insertBefore(link, bar);
+  }
+};
+
+const renderCollectionsPage = () => {
+  const grid = document.getElementById("collectionsGrid");
+  if (!grid) {
+    return;
+  }
+
+  collections.forEach((collection, index) => {
+    grid.appendChild(createCollectionCard(collection, index));
+  });
+};
+
+const renderDetailErrorState = (mount) => {
+  mount.innerHTML = `
+    <section class="section detail-error-wrap">
+      <div class="detail-error reveal in-view">
+        <p class="eyebrow">Detail View</p>
+        <h1>Wallpaper not found.</h1>
+        <p>The wallpaper you requested could not be loaded from the current collection.</p>
+        <a class="btn" href="wallpapers.html">Back to Collection</a>
+      </div>
+    </section>
+  `;
+};
+
+const setupDetailPage = () => {
+  const mount = document.getElementById("detailMount");
+  if (!mount) {
+    return;
+  }
+
+  const file = new URLSearchParams(window.location.search).get("file");
+  if (!file || !allWallpaperFiles.includes(file)) {
+    renderDetailErrorState(mount);
+    return;
+  }
+
+  const title = toTitle(file);
+  const category = inferCategory(file);
+  const path = encodeFilePath(file);
+  const relatedFiles = getRelatedWallpaperFiles(file);
+
+  mount.innerHTML = `
+    <section class="detail-hero reveal">
+      <div class="detail-hero-media">
+        <img class="detail-hero-image" src="${path}" alt="${escapeHtml(title)}" loading="eager" decoding="async" />
+      </div>
+    </section>
+
+    <section class="section detail-content">
+      <div class="detail-header reveal">
+        <div class="detail-copy">
+          <h1 class="detail-title">${escapeHtml(title)}</h1>
+          <span class="detail-badge" data-category="${escapeHtml(category)}">${escapeHtml(category)}</span>
+        </div>
+        <div class="detail-actions">
+          <a class="btn" href="${path}" download data-download data-file="${escapeHtml(file)}">Download</a>
+          <button class="btn-ghost js-detail-fullscreen" type="button">Open Fullscreen</button>
+        </div>
+      </div>
+
+      <div class="detail-meta-row reveal delay-1">
+        <div class="detail-meta-item">
+          <span class="detail-meta-label">Filename</span>
+          <strong class="detail-meta-value">${escapeHtml(file)}</strong>
+        </div>
+        <div class="detail-meta-item">
+          <span class="detail-meta-label">Category</span>
+          <strong class="detail-meta-value">${escapeHtml(category)}</strong>
+        </div>
+        <div class="detail-meta-item">
+          <span class="detail-meta-label">Resolution</span>
+          <strong class="detail-meta-value">4K Ready</strong>
+        </div>
+        <div class="detail-meta-item">
+          <span class="detail-meta-label">Format</span>
+          <strong class="detail-meta-value">${escapeHtml(getFileExtension(file))}</strong>
+        </div>
+      </div>
+    </section>
+
+    <section class="section detail-related">
+      <div class="section-head reveal">
+        <div>
+          <span class="eyebrow">Related Wallpapers</span>
+          <h2>More from this category</h2>
+        </div>
+        <p>Explore a few adjacent picks without leaving the same visual lane.</p>
+      </div>
+      <div class="wallpaper-grid related-grid" id="relatedGrid"></div>
+    </section>
+  `;
+
+  const image = mount.querySelector(".detail-hero-image");
+  const fullscreenButton = mount.querySelector(".js-detail-fullscreen");
+  const relatedGrid = mount.querySelector("#relatedGrid");
+
+  fullscreenButton?.addEventListener("click", () => {
+    openLightbox({
+      path,
+      title,
+      category,
+      file
+    });
+  });
+
+  if (relatedGrid) {
+    renderWallpaperGrid(relatedGrid, relatedFiles);
+  }
+
+  const handleImageError = () => {
+    renderDetailErrorState(mount);
+  };
+
+  image?.addEventListener("error", handleImageError, { once: true });
+
+  if (image?.complete && image.naturalWidth === 0) {
+    handleImageError();
+  }
+};
+
+const setupSetupPage = () => {
+  const vibeGrid = document.getElementById("setupVibeGrid");
+  const monitorRow = document.getElementById("setupMonitorRow");
+  const submitButton = document.getElementById("setupSubmitBtn");
+  if (!vibeGrid || !monitorRow || !submitButton) {
+    return;
+  }
+
+  let selectedVibe = "";
+  let selectedMonitor = "";
+
+  const syncButtonState = () => {
+    submitButton.disabled = !selectedVibe || !selectedMonitor;
+  };
+
+  setupVibes.forEach((vibe, index) => {
+    const delayClass = index % 2 === 1 ? " delay-1" : "";
+    const card = document.createElement("button");
+    card.type = "button";
+    card.className = `setup-card reveal${delayClass}`;
+    card.dataset.vibe = vibe.id;
+    card.setAttribute("aria-pressed", "false");
+    card.style.setProperty("--setup-image", `url("${encodeFilePath(vibe.cover)}")`);
+    card.innerHTML = `
+      <span class="setup-check" aria-hidden="true">✓</span>
+      <span class="setup-label">${escapeHtml(vibe.label)}</span>
+      <p>${escapeHtml(vibe.description)}</p>
+    `;
+    vibeGrid.appendChild(card);
+  });
+
+  setupMonitorOptions.forEach((monitor, index) => {
+    const delayClass = index > 0 ? " delay-1" : "";
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `setup-monitor-btn reveal${delayClass}`;
+    button.dataset.monitor = monitor.id;
+    button.textContent = monitor.label;
+    monitorRow.appendChild(button);
+  });
+
+  vibeGrid.addEventListener("click", (event) => {
+    const card = event.target.closest(".setup-card");
+    if (!card) {
+      return;
+    }
+
+    selectedVibe = card.dataset.vibe || "";
+    vibeGrid.querySelectorAll(".setup-card").forEach((item) => {
+      const isSelected = item === card;
+      item.classList.toggle("is-selected", isSelected);
+      item.setAttribute("aria-pressed", isSelected ? "true" : "false");
+    });
+    syncButtonState();
+  });
+
+  monitorRow.addEventListener("click", (event) => {
+    const button = event.target.closest(".setup-monitor-btn");
+    if (!button) {
+      return;
+    }
+
+    selectedMonitor = button.dataset.monitor || "";
+    monitorRow.querySelectorAll(".setup-monitor-btn").forEach((item) => {
+      item.classList.toggle("active", item === button);
+    });
+    syncButtonState();
+  });
+
+  submitButton.addEventListener("click", () => {
+    if (!selectedVibe || !selectedMonitor) {
+      return;
+    }
+
+    const files = normalizeFileList(setupMap[selectedVibe] || []);
+    const query = files.map((file) => encodeURIComponent(file)).join(",");
+    window.location.href = `wallpapers.html?collection-files=${query}`;
+  });
+
+  syncButtonState();
+};
+
+const setupWallpapersPage = () => {
   const allGrid = document.getElementById("allGrid");
-  if (allGrid) {
-    renderWallpaperGrid(allGrid, allWallpaperFiles);
+  if (!allGrid) {
+    return;
   }
 
-  setupHeroPreviewStack();
+  const browseState = getWallpaperBrowseState();
+  wallpaperBrowseFiles = browseState.files;
+  wallpaperBrowseContext = browseState.context;
+
+  renderWallpaperGrid(allGrid, wallpaperBrowseFiles);
+  updateWallpaperHeroContent();
+  renderWallpaperContextLink();
   setupCategoryFilters();
   setupSearchInput();
   setupCustomSortDropdown();
   setupRandomButton();
   setupStickyControlsObserver();
+  sortCardsInGrid(allGrid);
+  applyInitialUrlState();
+};
+
+const init = () => {
+  favorites = loadFavorites();
+
+  const page = document.body.dataset.page;
+  if (page === "home") {
+    const featuredGrid = document.getElementById("featuredGrid");
+    if (featuredGrid) {
+      renderWallpaperGrid(featuredGrid, featuredWallpaperFiles);
+    }
+    setupHeroPreviewStack();
+  }
+
+  if (page === "wallpapers") {
+    setupWallpapersPage();
+  }
+
+  if (page === "collections") {
+    renderCollectionsPage();
+  }
+
+  if (page === "setup") {
+    setupSetupPage();
+  }
+
+  if (page === "detail") {
+    setupDetailPage();
+  }
+
   setupGlobalInteractions();
   setupKeyboardShortcuts();
   setupNavState();
   setupStickyNav();
   setupRevealAnimations();
   setYear();
-
-  if (allGrid) {
-    sortCardsInGrid(allGrid);
-    applyInitialUrlState();
-  }
 };
 
 document.addEventListener("DOMContentLoaded", init);

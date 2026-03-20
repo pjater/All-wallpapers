@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Build a wallpaper shortlist based on your setup style." />
+  <meta property="og:title" content="All Wallpapers | Setup" />
+  <meta property="og:description" content="Pick a vibe and monitor profile to get a wallpaper shortlist." />
+  <meta property="og:type" content="website" />
+  <title>All Wallpapers | Setup</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Syne:wght@500;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body data-page="setup">
+  <div class="mesh" aria-hidden="true"></div>
+
+  <header class="site-nav" id="siteNav">
+    <div class="nav-shell">
+      <a class="brand" href="index.html">All <strong>Wallpapers</strong></a>
+      <nav class="nav-links" aria-label="Main navigation">
+        <a class="nav-link" data-nav="home" href="index.html">Home</a>
+        <a class="nav-link" data-nav="wallpapers" href="wallpapers.html">Wallpapers</a>
+        <a class="nav-link" data-nav="collections" href="collections.html">Collections</a>
+        <a class="nav-link" data-nav="setup" href="setup.html">Setup</a>
+        <a class="nav-link" data-nav="about" href="about.html">About</a>
+      </nav>
+      <a class="btn" href="wallpapers.html">Browse All</a>
+    </div>
+  </header>
+
+  <main>
+    <section class="page-hero reveal">
+      <span class="eyebrow">Find Your Match</span>
+      <h1>Build your perfect setup.</h1>
+      <p>
+        Pick a mood and a monitor format, then jump straight into a shortlist that matches the tone of your workspace.
+      </p>
+    </section>
+
+    <section class="section setup-section" style="padding-top: 2.2rem;">
+      <div class="setup-shell">
+        <div class="setup-step reveal">
+          <div class="setup-step-head">
+            <span class="text-step">Row 1</span>
+            <h2>Pick your vibe</h2>
+          </div>
+          <div class="setup-card-grid" id="setupVibeGrid"></div>
+        </div>
+
+        <div class="setup-step reveal delay-1">
+          <div class="setup-step-head">
+            <span class="text-step">Row 2</span>
+            <h2>Pick your monitor</h2>
+          </div>
+          <div class="setup-monitor-row" id="setupMonitorRow"></div>
+        </div>
+
+        <div class="setup-actions reveal delay-2">
+          <button class="btn setup-submit" id="setupSubmitBtn" type="button">Find My Wallpapers →</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <span>Copyright <span id="year"></span> All Wallpapers</span>
+    <span>Personalized picks from the full wallpaper library</span>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
